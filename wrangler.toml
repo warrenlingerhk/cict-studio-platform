@@ -1,6 +1,4 @@
-
-
-name = "cict-studio"
+name = "cict-studio-platform"
 main = "worker.js"
 compatibility_date = "2026-01-01"
 
@@ -10,8 +8,8 @@ binding = "ASSETS"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "stutio-db"
-database_id = "8b022068-cf3d-4eee-8a37-76c54b84d062"
+database_name = "studio-platform-db"
+database_id = "946e4222-5d1f-4b96-bc32-69e5abe49f8d"
 
 [vars]
-AMS_WEBHOOK_URL = ""
+AMS_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwnKwZBct5XVwcM0EComP6P8WGaA0G5zM05KBCrsdM_rNANrkLWdGJHL4_uB4qIV-VR/exec"
