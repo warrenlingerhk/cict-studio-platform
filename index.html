@@ -3,55 +3,284 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CICT Studio</title>
-    <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
-        header { border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-weight: bold; font-size: 1.2rem; color: #333; }
-        .btn { background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; border: none; cursor: pointer; }
-        .section { margin-bottom: 40px; }
-        .community-box { background: #f9f9f9; padding: 20px; border-radius: 8px; }
-        textarea { width: 100%; height: 80px; margin-bottom: 10px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="tab-title">CICT Studio</title>
+  <link rel="icon" type="image/png" id="tab-favicon" href="">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0077B6;
+      --accent: #D600D6;
+      --bg: #F8F9FA;
+      --navy: #023E8A;
+      --slate: #6C757D;
+      --lightBlue: #90E0EF;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--navy); font-family: 'Nunito Sans', sans-serif; margin: 0; font-size: 16px; }
+    h1, h2, h3, .brand { font-family: 'Poppins', sans-serif; }
+    .hidden { display: none !important; }
+    .wrap { width: min(1150px, 94%); margin-inline: auto; }
+    .site-head { position: sticky; top: 0; z-index: 50; background: var(--bg); }
+    .head-in { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 3px solid var(--navy); }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.25rem; color: var(--navy); text-decoration: none; }
+    .brand-logo { width: 44px; height: 44px; object-fit: contain; }
+    .btn { border-radius: 999px; font-weight: 800; cursor: pointer; transition: transform .15s; font-family: 'Nunito Sans'; }
+    .btn:hover { transform: translateY(-2px); }
+    .btn.small { padding: 6px 16px; font-size: .85rem; }
+    .btn.ghost { background: #fff; border: 2px solid var(--navy); color: var(--navy); }
+    .btn.cta { background: var(--accent); border: 2px solid var(--accent); color: #fff; }
+    .name-chip { background: #fff; border: 2px solid var(--navy); border-radius: 999px; padding: 6px 16px; font-size: .85rem; font-weight: 800; }
+    .layout { display: grid; grid-template-columns: 1.2fr .8fr; gap: 28px; padding: 26px 0 70px; align-items: start; }
+    .card { background: #fff; border-radius: 18px; box-shadow: 0 8px 24px rgba(2, 62, 138, .08); }
+    .hero { overflow: hidden; display: grid; grid-template-columns: 1.2fr .8fr; }
+    .hero-media { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); width: 100%; min-height: 240px; }
+    .hero-copy { padding: 34px 30px 28px; }
+    .hero h1 { font-size: clamp(1.5rem, 3.8vw, 2.3rem); font-weight: 800; line-height: 1.2; margin: 0; color: var(--navy); }
+    .hero-bullets { list-style: none; padding: 0; margin: 16px 0 0; }
+    .hero-bullets li { font-size: 1.05rem; font-weight: 700; color: var(--slate); margin-bottom: 8px; padding-left: 22px; position: relative; }
+    .hero-bullets li::before { content: '•'; color: var(--accent); font-weight: 800; position: absolute; left: 0; }
+    .rail-title { font-size: 1.25rem; font-weight: 800; margin: 6px 0 14px; text-align: center; }
+    .course-list { display: flex; flex-direction: column; gap: 14px; }
+    .course { border-radius: 16px; padding: 18px 20px; box-shadow: 0 6px 0 rgba(2, 62, 138, .18); color: #fff; }
+    .course h3 { margin: 0; font-size: 1.2rem; font-weight: 800; }
+    .course-date { font-size: 0.9rem; font-weight: 700; opacity: 0.9; margin-bottom: 8px; }
+    .course-btn { width: 100%; padding: 10px; border-radius: 999px; border: none; background: var(--navy); color: #fff; font-weight: 800; cursor: pointer; font-size: 1rem; margin: 10px 0; }
+    .community { padding: 26px 28px; margin-top: 28px; }
+    .community h2 { font-size: 1.5rem; margin: 0 0 6px; }
+    .community-sub { color: var(--slate); font-weight: 700; margin: 0 0 16px; }
+    #post-input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 2px solid var(--slate); font: inherit; font-size: 1rem; min-height: 80px; }
+    .post { background: var(--bg); border-radius: 12px; padding: 16px 18px; margin-top: 16px; }
+    .post-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .post-name { font-weight: 800; }
+    .post-date { font-size: .8rem; color: var(--slate); font-weight: 700; }
+    .module-menu { position: sticky; top: 63px; z-index: 40; background: var(--navy); color: #fff; display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 4px solid var(--accent); width: min(1150px, 94%); margin-inline: auto; }
+    .module-menu a { color: #fff; text-decoration: none; font-weight: 800; }
+    .mod-item { background: #fff; color: var(--navy); padding: 24px 26px; border-bottom: 1px solid rgba(2, 62, 138, 0.1); }
+    .expandable-box { border: 2px solid var(--lightBlue); border-radius: 10px; margin: 12px 0; overflow: hidden; }
+    .expandable-header { background: var(--lightBlue); color: var(--navy); padding: 14px 18px; font-weight: 800; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .expandable-content { padding: 0 18px; max-height: 0; overflow: hidden; transition: max-height .3s ease; }
+    .expandable-content.expanded { max-height: 2000px; padding: 18px; }
+    .answer-box { margin-top: 16px; background: var(--bg); padding: 18px; border-radius: 10px; border: 2px solid var(--primary); }
+    .answer-input { width: 100%; padding: 12px 14px; border-radius: 8px; border: 2px solid var(--slate); min-height: 90px; }
+    @media(max-width: 900px) { .layout, .hero { grid-template-columns: 1fr; } }
+  </style>
 </head>
 <body>
 
-    <header>
-        <div class="logo">CICT Studio</div>
-        <div>
-            <button class="btn">Log In</button>
+<header class="site-head">
+  <div class="head-in wrap">
+    <a class="brand" href="#" onclick="showHome(); return false;">
+      <img id="site-logo" class="brand-logo hidden" src="" alt="Logo">
+      <span id="site-name">CICT Studio</span>
+    </a>
+    <div class="head-actions" id="head-actions"></div>
+  </div>
+</header>
+
+<div id="view-home">
+  <div class="wrap layout">
+    <div>
+      <section class="hero card">
+        <div class="hero-copy">
+          <h1 id="hero-title">Advanced Certificate in Life Coaching</h1>
+          <ul class="hero-bullets" id="hero-bullets">
+            <li>Master coaching fundamentals.</li>
+            <li>Build lasting relationships.</li>
+            <li>Create meaningful impact.</li>
+          </ul>
         </div>
-    </header>
+        <div class="hero-media"></div>
+      </section>
 
-    <main>
-        <div class="section">
-            <h1>Welcome to CICT Studio</h1>
-            <p>This platform is designed for coaches to deliver high-impact training using the Hook-Retain-Reward methodology.</p>
-            <p><strong>Status:</strong> System Online. Ready for content configuration.</p>
+      <section class="community card">
+        <h2>Community Discussion</h2>
+        <p class="community-sub">Ask questions, share wins, and connect with fellow classmates.</p>
+        <div id="community-composer">
+          <textarea id="post-input" placeholder="Share a thought, question, or win..."></textarea>
+          <button class="btn cta small" style="margin-top: 8px;" onclick="submitPost()">Post</button>
         </div>
+        <div id="posts-host"></div>
+      </section>
+    </div>
 
-        <div class="section">
-            <h2>Lessons</h2>
-            <p>Your course modules will appear here once configured in your Google Sheet.</p>
-            <!-- Dynamic Content Injection Point -->
-            <div id="lesson-list"></div>
-        </div>
+    <aside class="rail">
+      <h2 class="rail-title">Lessons</h2>
+      <div class="course-list" id="course-list-home"></div>
+    </aside>
+  </div>
+</div>
 
-        <div class="section community-box">
-            <h2>Community Discussion</h2>
-            <p>Ask questions, share wins, and connect with fellow classmates.</p>
-            <form>
-                <textarea placeholder="Share your thoughts..."></textarea>
-                <button type="button" class="btn">Post</button>
-            </form>
-        </div>
-    </main>
+<div id="view-auth-signup" class="hidden wrap" style="padding: 60px 0; max-width: 440px;">
+  <div class="card" style="padding: 24px;">
+    <h2 style="font-weight: 800; font-size: 1.3rem; margin-bottom: 12px;">Join Class</h2>
+    <input type="text" id="signup-name" placeholder="Full Name" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--slate); border-radius: 6px;">
+    <input type="email" id="signup-email" placeholder="Email" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--slate); border-radius: 6px;">
+    <input type="password" id="signup-password" placeholder="Password (8+ chars)" style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid var(--slate); border-radius: 6px;">
+    <button class="btn cta" style="width: 100%; padding: 10px;" onclick="signup()">Create Account</button>
+    <p style="text-align: center; margin-top: 10px; font-size: .9rem;">Already enrolled? <a href="#" onclick="showAuth('login'); return false;" style="color: var(--accent); font-weight: 700;">Log In</a></p>
+  </div>
+</div>
 
-    <footer style="margin-top: 50px; border-top: 1px solid #eee; padding-top: 20px; color: #666; font-size: 0.9rem;">
-        &copy; 2026 CICT Studio. All rights reserved.
-    </footer>
+<div id="view-auth-login" class="hidden wrap" style="padding: 60px 0; max-width: 440px;">
+  <div class="card" style="padding: 24px;">
+    <h2 style="font-weight: 800; font-size: 1.3rem; margin-bottom: 12px;">Sign In</h2>
+    <input type="email" id="login-email" placeholder="Email" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--slate); border-radius: 6px;">
+    <input type="password" id="login-password" placeholder="Password" style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid var(--slate); border-radius: 6px;">
+    <button class="btn cta" style="width: 100%; padding: 10px;" onclick="login()">Log In</button>
+    <p style="text-align: center; margin-top: 10px; font-size: .9rem;">Need an account? <a href="#" onclick="showAuth('signup'); return false;" style="color: var(--accent); font-weight: 700;">Sign Up</a></p>
+  </div>
+</div>
 
+<div id="view-course" class="hidden">
+  <nav class="module-menu">
+    <a href="#" onclick="showHome(); return false;">&larr; Back to Dashboard</a>
+    <span id="save-status">All changes saved</span>
+  </nav>
+  <div id="course-content"></div>
+</div>
+
+<footer style="background: var(--navy); color: #fff; padding: 30px 0; margin-top: 60px; text-align: center; font-size: .9rem;">
+  <div class="wrap"><p id="footer-text">&copy; 2026 CICT Studio. All rights reserved.</p></div>
+</footer>
+
+<script>
+const CMS_LESSONS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRayZvzl-ACC99pLhQWes9FU3gI7LDQaikNYRtRh0hQvtbRdZ8Nr1MXkFlaOmfR4AXvkcQpo7fAlfBp/pub?gid=0&single=true&output=csv';
+
+let currentLessonId = '', saveTimeout, LESSONS = [];
+
+function hideViews() {
+  ['view-home', 'view-auth-signup', 'view-auth-login', 'view-course'].forEach(id => document.getElementById(id).classList.add('hidden'));
+}
+
+function showHome() {
+  hideViews();
+  document.getElementById('view-home').classList.remove('hidden');
+  renderHeader();
+  renderLessons();
+  renderCommunity();
+}
+
+function showAuth(type) {
+  hideViews();
+  document.getElementById(type === 'signup' ? 'view-auth-signup' : 'view-auth-login').classList.remove('hidden');
+}
+
+function logout() {
+  localStorage.clear();
+  showHome();
+}
+
+function renderHeader() {
+  const host = document.getElementById('head-actions');
+  const token = localStorage.getItem('token');
+  const name = localStorage.getItem('user_name') || 'Classmate';
+  const num = localStorage.getItem('user_number') || '';
+  if (token) {
+    host.innerHTML = `<span class="name-chip">${escapeHtml(name)} ${num}</span><button class="btn small ghost" style="margin-left: 8px;" onclick="logout()">Log out</button>`;
+  } else {
+    host.innerHTML = `<button class="btn small cta" onclick="showAuth('signup')">Sign Up</button><button class="btn small ghost" style="margin-left: 6px;" onclick="showAuth('login')">Log In</button>`;
+  }
+}
+
+async function renderLessons() {
+  const host = document.getElementById('course-list-home');
+  try {
+    const res = await fetch(CMS_LESSONS_URL);
+    const csv = await res.text();
+    const rows = parseCSV(csv);
+    LESSONS = [];
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      if (r.length < 2) continue;
+      LESSONS.push({ id: r[0].trim(), name: r[1].trim(), date: r[2] || '', tone: parseInt(r[3]) || 1 });
+    }
+    host.innerHTML = LESSONS.map(l => `
+      <div class="course" style="background: linear-gradient(135deg, #0077B6, #D600D6)">
+        <div class="course-date">${escapeHtml(l.date)}</div>
+        <h3>${escapeHtml(l.name)}</h3>
+        <button class="course-btn" onclick="openLesson('${l.id}')">Enter ${l.id}</button>
+      </div>`).join('');
+  } catch (e) {
+    host.innerHTML = '<p style="color: red;">Failed to load lessons.</p>';
+  }
+}
+
+async function openLesson(id) {
+  if (!localStorage.getItem('token')) { showAuth('login'); return; }
+  currentLessonId = id;
+  hideViews();
+  document.getElementById('view-course').classList.remove('hidden');
+  document.getElementById('course-content').innerHTML = `<div class="wrap" style="padding: 30px 0;"><h2>Lesson ${id}</h2><p>Course content connected to sheet modules.</p></div>`;
+}
+
+async function renderCommunity() {
+  const host = document.getElementById('posts-host');
+  const token = localStorage.getItem('token');
+  if (!token) { host.innerHTML = '<p class="community-sub" style="margin-top: 10px;">Please log in to join discussions.</p>'; return; }
+  try {
+    const r = await fetch('/api/posts', { headers: { 'Authorization': 'Bearer ' + token } });
+    const posts = await r.json();
+    host.innerHTML = posts.map(p => `
+      <div class="post">
+        <div class="post-head"><span class="post-name">${escapeHtml(p.user_name)}</span><span class="post-date">${(p.created_at || '').slice(0, 10)}</span></div>
+        <div>${escapeHtml(p.content)}</div>
+      </div>`).join('');
+  } catch (e) {}
+}
+
+async function submitPost() {
+  const input = document.getElementById('post-input');
+  const val = input.value.trim();
+  if (!val) return;
+  await fetch('/api/posts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+    body: JSON.stringify({ content: val })
+  });
+  input.value = '';
+  renderCommunity();
+}
+
+async function login() {
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+  const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+  const data = await r.json();
+  if (data.token) {
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user_name', data.name);
+    localStorage.setItem('user_number', data.user_number);
+    showHome();
+  } else { alert(data.error || 'Login failed'); }
+}
+
+async function signup() {
+  const name = document.getElementById('signup-name').value;
+  const email = document.getElementById('signup-email').value;
+  const password = document.getElementById('signup-password').value;
+  const r = await fetch('/api/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, password }) });
+  const data = await r.json();
+  if (data.token) {
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user_name', data.name);
+    localStorage.setItem('user_number', data.user_number);
+    showHome();
+  } else { alert(data.error || 'Sign-up failed'); }
+}
+
+function parseCSV(text) {
+  return text.split('\n').filter(r => r.trim()).map(row => row.split(','));
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+showHome();
+</script>
 </body>
 </html>
