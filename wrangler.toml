@@ -2,7 +2,16 @@
 
 name = "cict-studio"
 main = "worker.js"
-compatibility_date = "2023-10-30"
+compatibility_date = "2026-01-01"
 
 [assets]
-directory = "."
+directory = "./"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "stutio-db"
+database_id = "8b022068-cf3d-4eee-8a37-76c54b84d062"
+
+[vars]
+AMS_WEBHOOK_URL = ""
