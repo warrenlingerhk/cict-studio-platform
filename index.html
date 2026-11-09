@@ -17,6 +17,8 @@
       --navy: #0B2545;
       --slate: #6C757D;
       --lightBlue: #E9ECEF;
+      --red: #C62828;
+      --green: #1B7F3B;
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
@@ -33,8 +35,8 @@
     .btn.small { padding: 6px 16px; font-size: .85rem; }
     .btn.ghost { background: #fff; border: 2px solid var(--navy); color: var(--navy); }
     .btn.cta { background: var(--accent); border: 2px solid var(--accent); color: #fff; }
-    .name-chip { background: #fff; border: 2px solid var(--navy); border-radius: 999px; padding: 6px 16px; font-size: .85rem; font-weight: 800; }
-    .admin-chip { background: var(--accent); color: #fff; border: 2px solid var(--accent); border-radius: 999px; padding: 6px 14px; font-size: .8rem; font-weight: 800; margin-left: 6px; }
+    .pill { background: #fff; color: var(--navy); border: 2px solid var(--navy); border-radius: 999px; padding: 6px 16px; font-size: .85rem; font-weight: 800; text-decoration: none; cursor: pointer; display: inline-flex; align-items: center; }
+    .pill:hover { background: #f0f4f8; }
     .layout { display: grid; grid-template-columns: 1.2fr .8fr; gap: 28px; padding: 26px 0 70px; align-items: start; }
     .card { background: #fff; border-radius: 18px; box-shadow: 0 8px 24px rgba(11, 37, 69, .08); }
     .hero { overflow: hidden; display: grid; grid-template-columns: 1.2fr .8fr; }
@@ -53,12 +55,20 @@
     .community h2 { font-size: 1.5rem; margin: 0 0 6px; }
     .community-sub { color: var(--slate); font-weight: 700; margin: 0 0 16px; }
     #post-input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 2px solid var(--slate); font: inherit; font-size: 1rem; min-height: 80px; }
-    .post { background: var(--bg); border-radius: 12px; padding: 16px 18px; margin-top: 16px; }
+    .post { background: #f8f9fa; border-radius: 12px; padding: 16px 18px; margin-top: 16px; }
     .post-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
     .post-name { font-weight: 800; }
     .post-date { font-size: .8rem; color: var(--slate); font-weight: 700; }
     .module-menu { position: sticky; top: 63px; z-index: 40; background: var(--navy); color: #fff; display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 4px solid var(--accent); width: min(1150px, 94%); margin-inline: auto; }
     .module-menu a { color: #fff; text-decoration: none; font-weight: 800; }
+    .admin-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 16px 0 24px; }
+    .admin-stat { background: #fff; border: 2px solid var(--lightBlue); border-radius: 12px; padding: 18px; }
+    .admin-stat b { font-size: 1.8rem; display: block; color: var(--navy); }
+    .admin-stat span { color: var(--slate); font-size: .85rem; font-weight: 700; }
+    .member-row { background: #fff; border: 1px solid var(--lightBlue); border-radius: 10px; padding: 12px 16px; margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+    .badge { border-radius: 6px; padding: 3px 8px; font-size: .72rem; font-weight: 800; color: #fff; }
+    .badge-admin { background: var(--accent); }
+    .badge-member { background: var(--navy); }
     @media(max-width: 900px) { .layout, .hero { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -103,6 +113,25 @@
   </div>
 </div>
 
+<div id="view-admin" class="hidden wrap" style="padding: 30px 0;">
+  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid var(--accent); padding-bottom:14px; margin-bottom:20px;">
+    <h1 style="font-size:1.6rem; font-weight:800; margin:0;">Platform Administration</h1>
+    <button class="pill" onclick="showHome()">&larr; Back to Site</button>
+  </div>
+
+  <h2>Overview</h2>
+  <div class="admin-cards">
+    <div class="admin-stat"><b id="stat-members">1</b><span>Enrolled Members</span></div>
+    <div class="admin-stat"><b id="stat-posts">0</b><span>Discussion Posts</span></div>
+  </div>
+
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+    <h2 style="margin:0;">Members Roster</h2>
+    <button class="btn ghost small" onclick="syncMembersSheet()">Sync AMS Sheet</button>
+  </div>
+  <div id="admin-members-list"></div>
+</div>
+
 <div id="view-auth-signup" class="hidden wrap" style="padding: 60px 0; max-width: 440px;">
   <div class="card" style="padding: 24px;">
     <h2 style="font-weight: 800; font-size: 1.3rem; margin-bottom: 12px;">Join Class</h2>
@@ -121,6 +150,18 @@
     <input type="password" id="login-password" placeholder="Password" style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid var(--slate); border-radius: 6px;">
     <button class="btn cta" style="width: 100%; padding: 10px;" onclick="login()">Log In</button>
     <p style="text-align: center; margin-top: 10px; font-size: .9rem;">Need an account? <a href="#" onclick="showAuth('signup'); return false;" style="color: var(--accent); font-weight: 700;">Sign Up</a></p>
+    <p style="text-align: center; margin-top: 6px; font-size: .85rem;"><a href="#" onclick="showForgot(); return false;" style="color: var(--slate);">Forgot Password?</a></p>
+  </div>
+</div>
+
+<div id="view-auth-forgot" class="hidden wrap" style="padding: 60px 0; max-width: 440px;">
+  <div class="card" style="padding: 24px;">
+    <h2 style="font-weight: 800; font-size: 1.3rem; margin-bottom: 12px;">Reset Password</h2>
+    <p style="color: var(--slate); font-size: .9rem; margin-bottom: 12px;">Enter your email to receive a password reset link.</p>
+    <input type="email" id="forgot-email" placeholder="Email" style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid var(--slate); border-radius: 6px;">
+    <button class="btn cta" style="width: 100%; padding: 10px;" onclick="requestReset()">Send Link</button>
+    <p id="forgot-status" style="text-align: center; margin-top: 10px; font-size: .85rem; color: var(--navy);"></p>
+    <p style="text-align: center; margin-top: 10px; font-size: .9rem;"><a href="#" onclick="showAuth('login'); return false;" style="color: var(--accent); font-weight: 700;">Back to Log In</a></p>
   </div>
 </div>
 
@@ -241,7 +282,10 @@ async function applySettings() {
 }
 
 function hideViews() {
-  ['view-home', 'view-auth-signup', 'view-auth-login', 'view-course'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  ['view-home', 'view-admin', 'view-auth-signup', 'view-auth-login', 'view-auth-forgot', 'view-course'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
+  });
 }
 
 function showHome() {
@@ -252,9 +296,20 @@ function showHome() {
   renderCommunity();
 }
 
+function showAdmin() {
+  hideViews();
+  document.getElementById('view-admin').classList.remove('hidden');
+  loadAdminData();
+}
+
 function showAuth(type) {
   hideViews();
   document.getElementById(type === 'signup' ? 'view-auth-signup' : 'view-auth-login').classList.remove('hidden');
+}
+
+function showForgot() {
+  hideViews();
+  document.getElementById('view-auth-forgot').classList.remove('hidden');
 }
 
 function logout() {
@@ -266,15 +321,24 @@ function renderHeader() {
   const host = document.getElementById('head-actions');
   const token = localStorage.getItem('token');
   const name = localStorage.getItem('user_name') || 'Classmate';
-  const num = localStorage.getItem('user_number') || '';
-  const status = localStorage.getItem('user_status') || '';
-  const isAdmin = status.toLowerCase() === 'admin' || num === '#1';
+  const num = localStorage.getItem('user_number') || '1';
+  const status = (localStorage.getItem('user_status') || '').toLowerCase();
+  const isAdmin = status === 'admin' || num === '1';
 
   if (token) {
-    const adminBadge = isAdmin ? `<span class="admin-chip">Admin</span>` : '';
-    host.innerHTML = `<span class="name-chip">${escapeHtml(name)} ${escapeHtml(num)}</span>${adminBadge}<button class="btn small ghost" style="margin-left: 8px;" onclick="logout()">Log out</button>`;
+    const adminButton = isAdmin ? `<button class="pill" style="margin-right:8px;" onclick="showAdmin()">Admin</button>` : '';
+    host.innerHTML = `
+      <div style="display:inline-flex; align-items:center; gap:8px;">
+        ${adminButton}
+        <span class="pill" style="cursor:default;">${escapeHtml(name)} ${escapeHtml(num)}</span>
+        <button class="pill" onclick="logout()">Log out</button>
+      </div>
+    `;
   } else {
-    host.innerHTML = `<button class="btn small cta" onclick="showAuth('signup')">Sign Up</button><button class="btn small ghost" style="margin-left: 6px;" onclick="showAuth('login')">Log In</button>`;
+    host.innerHTML = `
+      <button class="btn small cta" onclick="showAuth('signup')">Sign Up</button>
+      <button class="btn small ghost" style="margin-left: 6px;" onclick="showAuth('login')">Log In</button>
+    `;
   }
 }
 
@@ -349,6 +413,68 @@ async function submitPost() {
   });
   input.value = '';
   renderCommunity();
+}
+
+async function loadAdminData() {
+  const token = localStorage.getItem('token');
+  try {
+    const r = await fetch('/api/admin/users', { headers: { 'Authorization': 'Bearer ' + token } });
+    const users = await r.json();
+    document.getElementById('stat-members').innerText = Array.isArray(users) ? users.length : 1;
+    
+    const host = document.getElementById('admin-members-list');
+    if (Array.isArray(users) && users.length) {
+      host.innerHTML = users.map(u => `
+        <div class="member-row">
+          <div>
+            <b>${escapeHtml(u.name)} (${escapeHtml(u.member_number)})</b>
+            <span class="badge ${u.is_admin ? 'badge-admin' : 'badge-member'}">${u.is_admin ? 'ADMIN' : 'MEMBER'}</span>
+            <div style="font-size:.85rem; color:var(--slate); margin-top:4px;">${escapeHtml(u.email)}</div>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="pill" style="font-size:.75rem; padding:4px 10px;" onclick="adminResetPw(${u.id})">Set Password</button>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      host.innerHTML = '<p class="community-sub">Roster updated from database.</p>';
+    }
+  } catch (err) {}
+}
+
+async function adminResetPw(userId) {
+  const newPw = prompt('Enter a new password for this member (minimum 8 characters):');
+  if (!newPw) return;
+  const token = localStorage.getItem('token');
+  const r = await fetch('/api/admin/reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({ user_id: userId, new_password: newPw })
+  });
+  if (r.ok) alert('Password updated successfully.');
+  else alert('Failed to update password.');
+}
+
+async function syncMembersSheet() {
+  const token = localStorage.getItem('token');
+  const r = await fetch('/api/admin/sync-members', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  if (r.ok) alert('AMS Members tab synchronized.');
+  else alert('Failed to sync members sheet.');
+}
+
+async function requestReset() {
+  const email = document.getElementById('forgot-email').value.trim();
+  const status = document.getElementById('forgot-status');
+  if (!email) { status.innerText = 'Please enter your email.'; return; }
+  await fetch('/api/forgot-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  });
+  status.innerText = 'If this email is enrolled, a reset link has been dispatched.';
 }
 
 async function login() {
