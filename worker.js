@@ -87,11 +87,10 @@ async function handleLogin(request, env) {
     .bind(cleanEmail)
     .first();
 
-  // Auto-provision initial Admin #1 if missing
   if (!user && cleanEmail === 'drwarren@cict.co') {
     const hash = await hashPassword(cleanEmail);
     await env.DB.prepare(`
-      INSERT INTO users (name, email, password_hash, member_number, status, is_admin, welcomed, created_at)
+      INSERT INTO users (name, email, password, member_number, status, is_admin, welcomed, created_at)
       VALUES (?, ?, ?, ?, ?, ?, 0, datetime('now'))
     `).bind('DrWarren', cleanEmail, hash, '1', 'Admin', 1).run();
 
@@ -105,7 +104,7 @@ async function handleLogin(request, env) {
   }
 
   const inputHash = await hashPassword(password);
-  const isValid = (user.password_hash === inputHash) || (password === user.email);
+  const isValid = (user.password === inputHash) || (password === user.email);
 
   if (!isValid) {
     return json({ error: 'Incorrect password.' }, 401);
@@ -154,7 +153,7 @@ async function handleSignup(request, env, ctx) {
   const isFirstUser = nextNum === '1' || cleanEmail === 'drwarren@cict.co';
 
   await env.DB.prepare(`
-    INSERT INTO users (name, email, password_hash, member_number, status, is_admin, welcomed, created_at, last_seen)
+    INSERT INTO users (name, email, password, member_number, status, is_admin, welcomed, created_at, last_seen)
     VALUES (?, ?, ?, ?, ?, ?, 0, datetime('now'), datetime('now'))
   `).bind(name || 'Classmate', cleanEmail, hash, nextNum, isFirstUser ? 'Admin' : 'Member', isFirstUser ? 1 : 0).run();
 
@@ -203,7 +202,7 @@ async function handleChangePassword(request, env, ctx) {
   }
 
   const currentHash = await hashPassword(currentPassword || '');
-  const isValid = (user.password_hash === currentHash) || (currentPassword === user.email);
+  const isValid = (user.password === currentHash) || (currentPassword === user.email);
 
   if (!isValid) {
     return json({ error: 'Current password is incorrect.' }, 400);
@@ -212,7 +211,7 @@ async function handleChangePassword(request, env, ctx) {
   if (newPassword) {
     if (String(newPassword).length < 8) return json({ error: 'New password must be 8+ characters.' }, 400);
     const newHash = await hashPassword(newPassword);
-    await env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(newHash, user.id).run();
+    await env.DB.prepare('UPDATE users SET password = ? WHERE id = ?').bind(newHash, user.id).run();
   }
 
   if (cleanName) {
@@ -296,7 +295,7 @@ async function handleResetPassword(request, env, ctx) {
   }
 
   const hash = await hashPassword(newPassword);
-  await env.DB.prepare("UPDATE users SET password_hash = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?")
+  await env.DB.prepare("UPDATE users SET password = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?")
     .bind(hash, user.id)
     .run();
 
@@ -368,7 +367,7 @@ async function handleAdminResetPassword(request, env) {
   }
 
   const hash = await hashPassword(new_password);
-  await env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+  await env.DB.prepare('UPDATE users SET password = ? WHERE id = ?')
     .bind(hash, user_id)
     .run();
 
