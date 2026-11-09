@@ -8,36 +8,41 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // 1. CORS Preflight
     if (request.method === 'OPTIONS') {
       return handleCors();
     }
 
     try {
-      // 2. Authentication Endpoints
+      // 1. Auth Endpoints
       if (url.pathname === '/api/login' && request.method === 'POST') {
         return await handleLogin(request, env);
       }
       if (url.pathname === '/api/signup' && request.method === 'POST') {
-        return await handleSignup(request, env);
+        return await handleSignup(request, env, ctx);
+      }
+      if (url.pathname === '/api/change-password' && request.method === 'POST') {
+        return await handleChangePassword(request, env, ctx);
+      }
+      if (url.pathname === '/api/welcome-seen' && request.method === 'POST') {
+        return await handleWelcomeSeen(request, env);
       }
       if (url.pathname === '/api/forgot-password' && request.method === 'POST') {
-        return await handleForgotPassword(request, env);
+        return await handleForgotPassword(request, env, ctx);
       }
       if (url.pathname === '/api/reset-check' && request.method === 'GET') {
         return await handleResetCheck(request, env);
       }
       if (url.pathname === '/api/reset-password' && request.method === 'POST') {
-        return await handleResetPassword(request, env);
+        return await handleResetPassword(request, env, ctx);
       }
 
-      // 3. Discussion Post Endpoints
+      // 2. Discussion Posts
       if (url.pathname === '/api/posts') {
         if (request.method === 'GET') return await handleGetPosts(request, env);
         if (request.method === 'POST') return await handleCreatePost(request, env);
       }
 
-      // 4. Admin Endpoints
+      // 3. Admin Tools
       if (url.pathname === '/api/admin/stats' && request.method === 'GET') {
         return await handleAdminStats(request, env);
       }
@@ -54,7 +59,7 @@ export default {
         return await handleAdminSyncMembers(request, env);
       }
 
-      // 5. Fallback: Serve static assets or root
+      // 4. Static Asset Fallback
       if (env.ASSETS) {
         return await env.ASSETS.fetch(request);
       }
@@ -67,7 +72,7 @@ export default {
 };
 
 // ============================================================================
-// HANDLERS: AUTHENTICATION
+// HANDLERS: AUTHENTICATION & PROFILE
 // ============================================================================
 
 async function handleLogin(request, env) {
@@ -78,17 +83,16 @@ async function handleLogin(request, env) {
     return json({ error: 'Email and password required.' }, 400);
   }
 
-  // Look up user in D1
   let user = await env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ?')
     .bind(cleanEmail)
     .first();
 
-  // Auto-provision initial Admin #1 if not in D1 yet
+  // Auto-provision initial Admin #1 if missing
   if (!user && cleanEmail === 'drwarren@cict.co') {
-    const hash = await hashPassword(cleanEmail); // Initial temp password is the email
+    const hash = await hashPassword(cleanEmail);
     await env.DB.prepare(`
-      INSERT INTO users (name, email, password_hash, member_number, status, is_admin, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      INSERT INTO users (name, email, password_hash, member_number, status, is_admin, welcomed, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, 0, datetime('now'))
     `).bind('DrWarren', cleanEmail, hash, '1', 'Admin', 1).run();
 
     user = await env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ?')
@@ -100,20 +104,18 @@ async function handleLogin(request, env) {
     return json({ error: 'Invalid credentials.' }, 401);
   }
 
-  // Password verification: checks hashed password or allows email as default temp password
   const inputHash = await hashPassword(password);
   const isValid = (user.password_hash === inputHash) || (password === user.email);
 
   if (!isValid) {
-    return json({ error: 'Invalid credentials.' }, 401);
+    return json({ error: 'Incorrect password.' }, 401);
   }
 
-  // Update last seen
   await env.DB.prepare("UPDATE users SET last_seen = datetime('now') WHERE id = ?")
     .bind(user.id)
     .run();
 
-  const token = user.id + ':' + generateUUID();
+  const token = user.id + ':' + crypto.randomUUID();
   await env.DB.prepare("UPDATE users SET auth_token = ? WHERE id = ?")
     .bind(token, user.id)
     .run();
@@ -122,13 +124,14 @@ async function handleLogin(request, env) {
     token,
     name: user.name,
     email: user.email,
-    user_number: user.member_number,
+    user_number: user.member_number || '1',
     status: user.status || (user.is_admin ? 'Admin' : 'Member'),
-    is_admin: !!user.is_admin
+    is_admin: !!user.is_admin,
+    welcomed: user.welcomed !== undefined ? user.welcomed : 1
   });
 }
 
-async function handleSignup(request, env) {
+async function handleSignup(request, env, ctx) {
   const { name, email, password } = await request.json();
   const cleanEmail = String(email || '').trim().toLowerCase();
 
@@ -144,7 +147,6 @@ async function handleSignup(request, env) {
     return json({ error: 'An account with this email already exists.' }, 409);
   }
 
-  // Determine next member number
   const countRow = await env.DB.prepare('SELECT COUNT(*) as count FROM users').first();
   const nextNum = String((countRow ? countRow.count : 0) + 1);
 
@@ -152,20 +154,19 @@ async function handleSignup(request, env) {
   const isFirstUser = nextNum === '1' || cleanEmail === 'drwarren@cict.co';
 
   await env.DB.prepare(`
-    INSERT INTO users (name, email, password_hash, member_number, status, is_admin, created_at, last_seen)
-    VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    INSERT INTO users (name, email, password_hash, member_number, status, is_admin, welcomed, created_at, last_seen)
+    VALUES (?, ?, ?, ?, ?, ?, 0, datetime('now'), datetime('now'))
   `).bind(name || 'Classmate', cleanEmail, hash, nextNum, isFirstUser ? 'Admin' : 'Member', isFirstUser ? 1 : 0).run();
 
   const newUser = await env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ?')
     .bind(cleanEmail)
     .first();
 
-  const token = newUser.id + ':' + generateUUID();
+  const token = newUser.id + ':' + crypto.randomUUID();
   await env.DB.prepare('UPDATE users SET auth_token = ? WHERE id = ?').bind(token, newUser.id).run();
 
-  // Push new member row to Google Sheet AMS via Webhook
   if (env.AMS_WEBHOOK_URL) {
-    fetch(env.AMS_WEBHOOK_URL, {
+    ctx.waitUntil(fetch(env.AMS_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -176,7 +177,7 @@ async function handleSignup(request, env) {
         status: newUser.status,
         joined: new Date().toISOString()
       })
-    }).catch(() => {});
+    }).catch(() => {}));
   }
 
   return json({
@@ -185,24 +186,76 @@ async function handleSignup(request, env) {
     email: newUser.email,
     user_number: newUser.member_number,
     status: newUser.status,
-    is_admin: !!newUser.is_admin
+    is_admin: !!newUser.is_admin,
+    welcomed: 0
   });
 }
 
-async function handleForgotPassword(request, env) {
+async function handleChangePassword(request, env, ctx) {
+  const user = await authenticate(request, env);
+  if (!user) return json({ error: 'Please log in again.' }, 401);
+
+  const { currentPassword, newPassword, newName } = await request.json();
+  const cleanName = String(newName || '').trim();
+
+  if (!cleanName && !newPassword) {
+    return json({ error: 'Enter a new name, a new password, or both.' }, 400);
+  }
+
+  const currentHash = await hashPassword(currentPassword || '');
+  const isValid = (user.password_hash === currentHash) || (currentPassword === user.email);
+
+  if (!isValid) {
+    return json({ error: 'Current password is incorrect.' }, 400);
+  }
+
+  if (newPassword) {
+    if (String(newPassword).length < 8) return json({ error: 'New password must be 8+ characters.' }, 400);
+    const newHash = await hashPassword(newPassword);
+    await env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(newHash, user.id).run();
+  }
+
+  if (cleanName) {
+    await env.DB.prepare('UPDATE users SET name = ? WHERE id = ?').bind(cleanName, user.id).run();
+    if (env.AMS_WEBHOOK_URL) {
+      ctx.waitUntil(fetch(env.AMS_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'member-update',
+          email: user.email,
+          name: cleanName
+        })
+      }).catch(() => {}));
+    }
+  }
+
+  return json({ success: true });
+}
+
+async function handleWelcomeSeen(request, env) {
+  const user = await authenticate(request, env);
+  if (!user) return json({ error: 'Please log in.' }, 401);
+  try {
+    await env.DB.prepare('UPDATE users SET welcomed = 1 WHERE id = ?').bind(user.id).run();
+  } catch (e) {}
+  return json({ success: true });
+}
+
+async function handleForgotPassword(request, env, ctx) {
   const { email } = await request.json();
   const cleanEmail = String(email || '').trim().toLowerCase();
   const user = await env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ?').bind(cleanEmail).first();
 
   if (user && env.AMS_WEBHOOK_URL) {
-    const resetToken = generateUUID();
+    const resetToken = crypto.randomUUID();
     await env.DB.prepare("UPDATE users SET reset_token = ?, reset_expires = datetime('now', '+1 hour') WHERE id = ?")
       .bind(resetToken, user.id)
       .run();
 
-    const resetUrl = new URL(request.url).origin + '/reset.html?token=' + resetToken;
+    const resetUrl = new URL(request.url).origin + '/?reset=' + resetToken;
 
-    fetch(env.AMS_WEBHOOK_URL, {
+    ctx.waitUntil(fetch(env.AMS_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -211,7 +264,7 @@ async function handleForgotPassword(request, env) {
         name: user.name,
         url: resetUrl
       })
-    }).catch(() => {});
+    }).catch(() => {}));
   }
 
   return json({ ok: true });
@@ -228,7 +281,7 @@ async function handleResetCheck(request, env) {
   return json({ valid: !!user });
 }
 
-async function handleResetPassword(request, env) {
+async function handleResetPassword(request, env, ctx) {
   const { token, newPassword } = await request.json();
   if (!token || !newPassword || newPassword.length < 8) {
     return json({ error: 'Valid token and minimum 8-character password required.' }, 400);
@@ -251,7 +304,7 @@ async function handleResetPassword(request, env) {
 }
 
 // ============================================================================
-// HANDLERS: COMMUNITY DISCUSSIONS
+// HANDLERS: COMMUNITY & ADMIN
 // ============================================================================
 
 async function handleGetPosts(request, env) {
@@ -265,8 +318,8 @@ async function handleGetPosts(request, env) {
 }
 
 async function handleCreatePost(request, env) {
-  const auth = await authenticate(request, env);
-  if (!auth) return json({ error: 'Unauthorized.' }, 401);
+  const user = await authenticate(request, env);
+  if (!user) return json({ error: 'Unauthorized.' }, 401);
 
   const { content } = await request.json();
   if (!content || !content.trim()) return json({ error: 'Content required.' }, 400);
@@ -274,33 +327,27 @@ async function handleCreatePost(request, env) {
   await env.DB.prepare(`
     INSERT INTO posts (user_id, user_name, content, created_at)
     VALUES (?, ?, ?, datetime('now'))
-  `).bind(auth.id, auth.name, content.trim()).run();
+  `).bind(user.id, user.name, content.trim()).run();
 
   return json({ ok: true });
 }
 
-// ============================================================================
-// HANDLERS: ADMIN
-// ============================================================================
-
 async function handleAdminStats(request, env) {
-  const auth = await authenticateAdmin(request, env);
-  if (!auth) return json({ error: 'Unauthorized Admin.' }, 403);
+  const admin = await authenticateAdmin(request, env);
+  if (!admin) return json({ error: 'Unauthorized Admin.' }, 403);
 
   const uCount = await env.DB.prepare('SELECT COUNT(*) as count FROM users').first();
   const pCount = await env.DB.prepare('SELECT COUNT(*) as count FROM posts').first();
-  const aCount = await env.DB.prepare("SELECT COUNT(*) as count FROM users WHERE last_seen > datetime('now', '-5 minutes')").first();
 
   return json({
     users: uCount ? uCount.count : 0,
-    posts: pCount ? pCount.count : 0,
-    active: aCount ? aCount.count : 0
+    posts: pCount ? pCount.count : 0
   });
 }
 
 async function handleAdminUsers(request, env) {
-  const auth = await authenticateAdmin(request, env);
-  if (!auth) return json({ error: 'Unauthorized Admin.' }, 403);
+  const admin = await authenticateAdmin(request, env);
+  if (!admin) return json({ error: 'Unauthorized Admin.' }, 403);
 
   const rows = await env.DB.prepare(`
     SELECT id, member_number, name, email, status, is_admin, last_seen, created_at
@@ -312,8 +359,8 @@ async function handleAdminUsers(request, env) {
 }
 
 async function handleAdminResetPassword(request, env) {
-  const auth = await authenticateAdmin(request, env);
-  if (!auth) return json({ error: 'Unauthorized Admin.' }, 403);
+  const admin = await authenticateAdmin(request, env);
+  if (!admin) return json({ error: 'Unauthorized Admin.' }, 403);
 
   const { user_id, new_password } = await request.json();
   if (!user_id || !new_password || new_password.length < 8) {
@@ -329,8 +376,8 @@ async function handleAdminResetPassword(request, env) {
 }
 
 async function handleAdminSetAdmin(request, env) {
-  const auth = await authenticateAdmin(request, env);
-  if (!auth) return json({ error: 'Unauthorized Admin.' }, 403);
+  const admin = await authenticateAdmin(request, env);
+  if (!admin) return json({ error: 'Unauthorized Admin.' }, 403);
 
   const { user_id, is_admin } = await request.json();
   await env.DB.prepare('UPDATE users SET is_admin = ? WHERE id = ?')
@@ -341,8 +388,8 @@ async function handleAdminSetAdmin(request, env) {
 }
 
 async function handleAdminSyncMembers(request, env) {
-  const auth = await authenticateAdmin(request, env);
-  if (!auth) return json({ error: 'Unauthorized Admin.' }, 403);
+  const admin = await authenticateAdmin(request, env);
+  if (!admin) return json({ error: 'Unauthorized Admin.' }, 403);
   if (!env.AMS_WEBHOOK_URL) return json({ error: 'AMS_WEBHOOK_URL not configured.' }, 500);
 
   const users = await env.DB.prepare('SELECT * FROM users ORDER BY CAST(member_number AS INTEGER) ASC').all();
@@ -389,10 +436,6 @@ async function hashPassword(str) {
   const enc = new TextEncoder().encode(str + '_cict_salt');
   const buf = await crypto.subtle.digest('SHA-256', enc);
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function generateUUID() {
-  return crypto.randomUUID();
 }
 
 function json(data, status = 200) {
