@@ -47,7 +47,6 @@
     .course-list { display: flex; flex-direction: column; gap: 14px; }
     .course { border-radius: 16px; padding: 18px 20px; box-shadow: 0 6px 0 rgba(11, 37, 69, .18); color: #fff; }
     .course h3 { margin: 0; font-size: 1.2rem; font-weight: 800; }
-    .course-date { font-size: 0.9rem; font-weight: 700; opacity: 0.9; margin-bottom: 8px; }
     .course-btn { width: 100%; padding: 10px; border-radius: 999px; border: none; background: var(--navy); color: #fff; font-weight: 800; cursor: pointer; font-size: 1rem; margin: 10px 0; }
     .community { padding: 26px 28px; margin-top: 28px; }
     .community h2 { font-size: 1.5rem; margin: 0 0 6px; }
@@ -59,13 +58,6 @@
     .post-date { font-size: .8rem; color: var(--slate); font-weight: 700; }
     .module-menu { position: sticky; top: 63px; z-index: 40; background: var(--navy); color: #fff; display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 4px solid var(--accent); width: min(1150px, 94%); margin-inline: auto; }
     .module-menu a { color: #fff; text-decoration: none; font-weight: 800; }
-    .mod-item { background: #fff; color: var(--navy); padding: 24px 26px; border-bottom: 1px solid rgba(11, 37, 69, 0.1); }
-    .expandable-box { border: 2px solid var(--lightBlue); border-radius: 10px; margin: 12px 0; overflow: hidden; }
-    .expandable-header { background: var(--lightBlue); color: var(--navy); padding: 14px 18px; font-weight: 800; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-    .expandable-content { padding: 0 18px; max-height: 0; overflow: hidden; transition: max-height .3s ease; }
-    .expandable-content.expanded { max-height: 2000px; padding: 18px; }
-    .answer-box { margin-top: 16px; background: var(--bg); padding: 18px; border-radius: 10px; border: 2px solid var(--primary); }
-    .answer-input { width: 100%; padding: 12px 14px; border-radius: 8px; border: 2px solid var(--slate); min-height: 90px; }
     @media(max-width: 900px) { .layout, .hero { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -86,12 +78,8 @@
     <div>
       <section class="hero card">
         <div class="hero-copy">
-          <h1 id="hero-title">Your Legacy, Scaled by Design.</h1>
-          <ul class="hero-bullets" id="hero-bullets">
-            <li>Master coaching fundamentals.</li>
-            <li>Build lasting relationships.</li>
-            <li>Create meaningful impact.</li>
-          </ul>
+          <h1 id="hero-title">Loading...</h1>
+          <ul class="hero-bullets" id="hero-bullets"></ul>
         </div>
         <div class="hero-media"></div>
       </section>
@@ -149,4 +137,225 @@
 
 <script>
 const CMS_LESSONS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRayZvzl-ACC99pLhQWes9FU3gI7LDQaikNYRtRh0hQvtbRdZ8Nr1MXkFlaOmfR4AXvkcQpo7fAlfBp/pub?gid=0&single=true&output=csv';
-const SETTINGS_CSV_URL = '
+const SETTINGS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-GuKH1NLoIOG9UoA8WV8jPd3hw8CFzu9g5NnuPnXv9ck-iJ7tbsQKVG1VKXHRLUlfs2y_QesvszsV/pub?gid=507176348&single=true&output=csv';
+
+let currentLessonId = '', LESSONS = [];
+
+function formatDriveUrl(url) {
+  if (!url) return '';
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    return 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w1000';
+  }
+  return url;
+}
+
+async function applySettings() {
+  try {
+    const res = await fetch(SETTINGS_CSV_URL);
+    const csv = await res.text();
+    const rows = parseCSV(csv);
+    if (rows.length < 2) return;
+    const s = rows[1];
+
+    const siteName   = s[0] || 'CICT Studio';
+    const logoUrl    = s[4] || '';
+    const favUrl     = s[5] || '';
+    const heroTitle  = s[6] || 'Your Legacy, Scaled by Design.';
+    const heroPoints = s[7] || '';
+    const primary    = s[8] || '#0B2545';
+    const accent     = s[9] || '#D4AF37';
+    const bg         = s[10] || '#FFFFFF';
+
+    document.getElementById('site-name').innerText = siteName;
+    document.getElementById('tab-title').innerText = siteName;
+    document.getElementById('footer-text').innerHTML = `&copy; 2026 ${escapeHtml(siteName)}. All rights reserved.`;
+
+    if (logoUrl) {
+      const logoEl = document.getElementById('site-logo');
+      logoEl.src = formatDriveUrl(logoUrl);
+      logoEl.classList.remove('hidden');
+    }
+    if (favUrl) {
+      document.getElementById('tab-favicon').href = formatDriveUrl(favUrl);
+    }
+    document.getElementById('hero-title').innerText = heroTitle;
+
+    const bulletEl = document.getElementById('hero-bullets');
+    if (heroPoints) {
+      const bullets = heroPoints.split('|').map(p => p.trim()).filter(Boolean);
+      bulletEl.innerHTML = bullets.map(b => `<li>${escapeHtml(b)}</li>`).join('');
+    } else {
+      bulletEl.innerHTML = '';
+    }
+
+    const r = document.documentElement;
+    r.style.setProperty('--primary', primary);
+    r.style.setProperty('--navy', primary);
+    r.style.setProperty('--accent', accent);
+    r.style.setProperty('--bg', bg);
+  } catch (err) {
+    console.error('Failed to load settings:', err);
+  }
+}
+
+function hideViews() {
+  ['view-home', 'view-auth-signup', 'view-auth-login', 'view-course'].forEach(id => document.getElementById(id).classList.add('hidden'));
+}
+
+function showHome() {
+  hideViews();
+  document.getElementById('view-home').classList.remove('hidden');
+  renderHeader();
+  renderLessons();
+  renderCommunity();
+}
+
+function showAuth(type) {
+  hideViews();
+  document.getElementById(type === 'signup' ? 'view-auth-signup' : 'view-auth-login').classList.remove('hidden');
+}
+
+function logout() {
+  localStorage.clear();
+  showHome();
+}
+
+function renderHeader() {
+  const host = document.getElementById('head-actions');
+  const token = localStorage.getItem('token');
+  const name = localStorage.getItem('user_name') || 'Classmate';
+  const num = localStorage.getItem('user_number') || '';
+  if (token) {
+    host.innerHTML = `<span class="name-chip">${escapeHtml(name)} ${num}</span><button class="btn small ghost" style="margin-left: 8px;" onclick="logout()">Log out</button>`;
+  } else {
+    host.innerHTML = `<button class="btn small cta" onclick="showAuth('signup')">Sign Up</button><button class="btn small ghost" style="margin-left: 6px;" onclick="showAuth('login')">Log In</button>`;
+  }
+}
+
+async function renderLessons() {
+  const host = document.getElementById('course-list-home');
+  try {
+    const res = await fetch(CMS_LESSONS_URL);
+    const csv = await res.text();
+    const rows = parseCSV(csv);
+    LESSONS = [];
+    const seen = new Set();
+
+    // Column A: Lesson (0), Column B: Name (1), Column C: Active (2)
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      if (r.length < 3) continue;
+      const lessonNum = (r[0] || '').trim();
+      const lessonName = (r[1] || '').trim();
+      const isActive = (r[2] || '').trim().toUpperCase();
+
+      // Only show if Active is TRUE
+      if (isActive === 'TRUE' && !seen.has(lessonNum)) {
+        seen.add(lessonNum);
+        LESSONS.push({ id: lessonNum, name: lessonName });
+      }
+    }
+
+    if (LESSONS.length === 0) {
+      host.innerHTML = '<p class="community-sub" style="text-align: center; margin-top: 10px;">No active lessons right now.</p>';
+      return;
+    }
+
+    host.innerHTML = LESSONS.map(l => `
+      <div class="course" style="background: linear-gradient(135deg, var(--primary), var(--accent))">
+        <h3>${escapeHtml(l.name || 'Lesson ' + l.id)}</h3>
+        <button class="course-btn" onclick="openLesson('${l.id}')">Enter Lesson ${escapeHtml(l.id)}</button>
+      </div>`).join('');
+  } catch (e) {
+    host.innerHTML = '<p style="color: red;">Failed to load lessons.</p>';
+  }
+}
+
+async function openLesson(id) {
+  if (!localStorage.getItem('token')) { showAuth('login'); return; }
+  currentLessonId = id;
+  hideViews();
+  document.getElementById('view-course').classList.remove('hidden');
+  document.getElementById('course-content').innerHTML = `<div class="wrap" style="padding: 30px 0;"><h2>Lesson ${escapeHtml(id)}</h2><p>Course content connected to sheet modules.</p></div>`;
+}
+
+async function renderCommunity() {
+  const host = document.getElementById('posts-host');
+  const token = localStorage.getItem('token');
+  if (!token) { host.innerHTML = '<p class="community-sub" style="margin-top: 10px;">Please log in to join discussions.</p>'; return; }
+  try {
+    const r = await fetch('/api/posts', { headers: { 'Authorization': 'Bearer ' + token } });
+    const posts = await r.json();
+    host.innerHTML = posts.map(p => `
+      <div class="post">
+        <div class="post-head"><span class="post-name">${escapeHtml(p.user_name)}</span><span class="post-date">${(p.created_at || '').slice(0, 10)}</span></div>
+        <div>${escapeHtml(p.content)}</div>
+      </div>`).join('');
+  } catch (e) {}
+}
+
+async function submitPost() {
+  const input = document.getElementById('post-input');
+  const val = input.value.trim();
+  if (!val) return;
+  await fetch('/api/posts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+    body: JSON.stringify({ content: val })
+  });
+  input.value = '';
+  renderCommunity();
+}
+
+async function login() {
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+  const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+  const data = await r.json();
+  if (data.token) {
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user_name', data.name);
+    localStorage.setItem('user_number', data.user_number);
+    showHome();
+  } else { alert(data.error || 'Login failed'); }
+}
+
+async function signup() {
+  const name = document.getElementById('signup-name').value;
+  const email = document.getElementById('signup-email').value;
+  const password = document.getElementById('signup-password').value;
+  const r = await fetch('/api/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, password }) });
+  const data = await r.json();
+  if (data.token) {
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user_name', data.name);
+    localStorage.setItem('user_number', data.user_number);
+    showHome();
+  } else { alert(data.error || 'Sign-up failed'); }
+}
+
+function parseCSV(text) {
+  return text.split('\n').filter(r => r.trim()).map(row => {
+    let matches = [];
+    let match;
+    let re = /(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|([^\",\r\n]*))(?:,|$)/g;
+    while ((match = re.exec(row)) !== null) {
+      if (match.index === re.lastIndex) re.lastIndex++;
+      let val = match[1] !== undefined ? match[1].replace(/\"\"/g, '"') : match[2];
+      matches.push(val);
+      if (re.lastIndex >= row.length) break;
+    }
+    return matches;
+  });
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+applySettings();
+showHome();
+</script>
+</body>
+</html>
