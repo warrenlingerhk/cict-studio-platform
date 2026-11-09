@@ -150,6 +150,45 @@ function formatDriveUrl(url) {
   return url;
 }
 
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let token = '';
+  let insideQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    const next = text[i + 1];
+
+    if (c === '"') {
+      if (insideQuotes && next === '"') {
+        token += '"';
+        i++;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+    } else if (c === ',' && !insideQuotes) {
+      row.push(token);
+      token = '';
+    } else if ((c === '\r' || c === '\n') && !insideQuotes) {
+      if (c === '\r' && next === '\n') i++;
+      row.push(token);
+      token = '';
+      if (row.length > 0 && row.some(cell => cell.trim())) rows.push(row);
+      row = [];
+    } else {
+      token += c;
+    }
+  }
+
+  if (token || row.length > 0) {
+    row.push(token);
+    if (row.some(cell => cell.trim())) rows.push(row);
+  }
+
+  return rows;
+}
+
 async function applySettings() {
   try {
     const res = await fetch(SETTINGS_CSV_URL);
@@ -183,7 +222,8 @@ async function applySettings() {
 
     const bulletEl = document.getElementById('hero-bullets');
     if (heroPoints) {
-      const bullets = heroPoints.split('|').map(p => p.trim()).filter(Boolean);
+      const cleaned = heroPoints.replace(/[\r\n]+/g, ' ');
+      const bullets = cleaned.split('|').map(p => p.trim()).filter(Boolean);
       bulletEl.innerHTML = bullets.map(b => `<li>${escapeHtml(b)}</li>`).join('');
     } else {
       bulletEl.innerHTML = '';
@@ -242,7 +282,6 @@ async function renderLessons() {
     LESSONS = [];
     const seen = new Set();
 
-    // Column A: Lesson (0), Column B: Name (1), Column C: Active (2)
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
       if (r.length < 3) continue;
@@ -250,7 +289,6 @@ async function renderLessons() {
       const lessonName = (r[1] || '').trim();
       const isActive = (r[2] || '').trim().toUpperCase();
 
-      // Only show if Active is TRUE
       if (isActive === 'TRUE' && !seen.has(lessonNum)) {
         seen.add(lessonNum);
         LESSONS.push({ id: lessonNum, name: lessonName });
@@ -333,21 +371,6 @@ async function signup() {
     localStorage.setItem('user_number', data.user_number);
     showHome();
   } else { alert(data.error || 'Sign-up failed'); }
-}
-
-function parseCSV(text) {
-  return text.split('\n').filter(r => r.trim()).map(row => {
-    let matches = [];
-    let match;
-    let re = /(?:\"([^\"]*(?:\"\"[^\"]*)*)\"|([^\",\r\n]*))(?:,|$)/g;
-    while ((match = re.exec(row)) !== null) {
-      if (match.index === re.lastIndex) re.lastIndex++;
-      let val = match[1] !== undefined ? match[1].replace(/\"\"/g, '"') : match[2];
-      matches.push(val);
-      if (re.lastIndex >= row.length) break;
-    }
-    return matches;
-  });
 }
 
 function escapeHtml(s) {
