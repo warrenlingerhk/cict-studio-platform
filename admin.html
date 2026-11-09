@@ -1,1 +1,234 @@
 
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CICT Studio — Admin</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>
+  :root {
+    --navy: #0B2545;
+    --accent: #D4AF37;
+    --bg: #F8F9FA;
+    --card: #FFFFFF;
+    --slate: #6C757D;
+    --red: #C62828;
+    --green: #1B7F3B;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+  body { background: var(--bg); color: var(--navy); padding: 24px; }
+  header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--accent); padding-bottom: 14px; margin-bottom: 22px; }
+  header h1 { font-size: 1.5rem; font-weight: 800; }
+  header h1 span { color: var(--accent); }
+  .pill { background: #fff; color: var(--navy); border: 2px solid var(--navy); border-radius: 999px; padding: 8px 18px; font-weight: 700; text-decoration: none; font-size: .85rem; }
+  h2 { margin: 26px 0 10px; font-size: 1.15rem; font-weight: 800; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin: 12px 0 8px; }
+  .card { background: var(--card); border-radius: 12px; padding: 18px; box-shadow: 0 4px 12px rgba(11,37,69,.06); }
+  .card b { font-size: 1.6rem; display: block; margin-bottom: 4px; color: var(--navy); }
+  .card span { color: var(--slate); font-size: .85rem; font-weight: 600; }
+  .row { background: var(--card); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; box-shadow: 0 2px 6px rgba(11,37,69,.05); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+  .muted { color: var(--slate); font-size: .85rem; }
+  button { cursor: pointer; border: none; border-radius: 8px; padding: 7px 12px; font-weight: 700; font-size: .82rem; }
+  button[disabled] { opacity: .35; cursor: not-allowed; }
+  .btn-accent { background: var(--accent); color: #fff; }
+  .btn-navy { background: var(--navy); color: #fff; }
+  .btn-ghost { background: #fff; color: var(--navy); border: 2px solid var(--navy); }
+  .btn-red { background: var(--red); color: #fff; }
+  .btn-mini { padding: 5px 8px; font-size: .72rem; border-radius: 6px; }
+  .badge { border-radius: 6px; padding: 2px 8px; font-size: .7rem; font-weight: 800; color: #fff; background: var(--navy); }
+  .badge.a { background: var(--accent); }
+  .badge.r { background: var(--red); }
+  .badge.g { background: var(--green); }
+  .chip { background: #eef2f7; border-radius: 6px; padding: 3px 8px; font-size: .75rem; font-weight: 700; color: var(--navy); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .dot.on { background: var(--green); box-shadow: 0 0 6px rgba(27,127,59,.7); }
+  .dot.off { background: #d3dce6; }
+  label.chk { display: flex; gap: 6px; align-items: center; font-size: .82rem; color: var(--slate); font-weight: 600; }
+  #login { max-width: 360px; margin: 10vh auto; background: #fff; padding: 26px; border-radius: 12px; box-shadow: 0 6px 18px rgba(11,37,69,.12); }
+  #login h1 { margin-bottom: 14px; font-size: 1.4rem; }
+  #login h1 span { color: var(--accent); }
+  input { width: 100%; padding: 10px; margin: 6px 0 12px; border: 2px solid #dfe6ee; border-radius: 8px; font-size: .95rem; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="login" class="hidden">
+  <h1>CICT <span>Admin</span></h1>
+  <input id="li-email" type="email" placeholder="Admin Email">
+  <input id="li-pass" type="password" placeholder="Password">
+  <button class="btn-navy" style="width:100%; padding:10px;" onclick="doLogin()">Log in</button>
+  <p id="li-err" class="muted" style="margin-top:10px; color:var(--red);"></p>
+</div>
+
+<div id="dash" class="hidden">
+  <header>
+    <h1>CICT <span>Studio Admin</span></h1>
+    <a class="pill" href="/">&#8592; Back to Site</a>
+  </header>
+  
+  <h2>Platform Overview</h2>
+  <div class="cards" id="stats"></div>
+
+  <h2 style="display:flex; justify-content:space-between; align-items:center;">
+    Classmates & Roster
+    <button id="sync-members-btn" class="btn-ghost" onclick="syncMembers()">Sync AMS Sheet</button>
+  </h2>
+  <div id="members"></div>
+</div>
+
+<script>
+const KEYS = ['cict_token', 'token'];
+let TOKEN = '';
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function isOnline(ls) {
+  if (!ls) return false;
+  const t = Date.parse(String(ls).replace(' ', 'T') + 'Z');
+  return !isNaN(t) && (Date.now() - t) < 5 * 60000;
+}
+
+async function api(path, opts = {}) {
+  return fetch(path, {
+    method: opts.method || 'GET',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+}
+
+async function getJSON(path) {
+  const r = await api(path);
+  if (!r.ok) return null;
+  try { return await r.json(); } catch(e) { return null; }
+}
+
+async function checkAdmin(t) {
+  try {
+    const r = await fetch('/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + t } });
+    return r.status === 200;
+  } catch(e) { return false; }
+}
+
+function showLogin(msg) {
+  $('login').classList.remove('hidden');
+  $('dash').classList.add('hidden');
+  $('li-err').textContent = msg || '';
+}
+
+function showDash() {
+  $('login').classList.add('hidden');
+  $('dash').classList.remove('hidden');
+  loadAll();
+}
+
+async function boot() {
+  for (const k of KEYS) {
+    const v = localStorage.getItem(k);
+    if (v && await checkAdmin(v)) {
+      TOKEN = v;
+      showDash();
+      return;
+    }
+  }
+  showLogin('');
+}
+
+async function doLogin() {
+  const email = $('li-email').value.trim();
+  const password = $('li-pass').value;
+  const r = await fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+  const j = await r.json();
+  if (!r.ok) { showLogin(j.error || 'Login failed.'); return; }
+  TOKEN = j.token;
+  KEYS.forEach(k => localStorage.setItem(k, j.token));
+  if (await checkAdmin(TOKEN)) { showDash(); return; }
+  showLogin('Logged in, but this account is not marked as Admin.');
+}
+
+async function act(path, body) {
+  const r = await api(path, { method: 'POST', body });
+  if (!r.ok) {
+    const j = await r.json().catch(() => ({}));
+    alert(j.error || 'Action failed.');
+  }
+  loadAll();
+}
+
+async function syncMembers() {
+  const btn = $('sync-members-btn');
+  btn.disabled = true;
+  btn.textContent = 'Syncing...';
+  try {
+    const r = await api('/api/admin/sync-members', { method: 'POST' });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) alert(j.error || 'Sync failed.');
+    else alert('Sheet synchronized successfully.');
+  } catch(e) {
+    alert('Sync error: ' + e.message);
+  }
+  btn.disabled = false;
+  btn.textContent = 'Sync AMS Sheet';
+  loadAll();
+}
+
+async function loadAll() {
+  const [stats, users] = await Promise.all([
+    getJSON('/api/admin/stats'),
+    getJSON('/api/admin/users')
+  ]);
+
+  $('stats').innerHTML = stats ? `
+    <div class="card"><b>${stats.users || 0}</b><span>Total Members</span></div>
+    <div class="card"><b>${stats.active || 0}</b><span>Active (Last 5m)</span></div>
+    <div class="card"><b>${stats.posts || 0}</b><span>Discussion Posts</span></div>
+  ` : '<p class="muted">Stats unavailable.</p>';
+
+  $('members').innerHTML = (Array.isArray(users) && users.length) ? users.map(u => {
+    const badgeClass = u.status === 'Approved' ? 'g' : (u.status === 'Banned' ? 'r' : 'a');
+    const on = isOnline(u.last_seen);
+    return `
+      <div class="row">
+        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+          <b>#${esc(u.member_number)} ${esc(u.name)}</b>
+          <span class="dot ${on ? 'on' : 'off'}" title="${on ? 'Online now' : 'Last seen ' + (u.last_seen || 'never')}"></span>
+          <span class="badge ${badgeClass}">${esc(u.status || 'Active').toUpperCase()}</span>
+          ${u.is_admin ? '<span class="badge a">ADMIN</span>' : ''}
+          <span class="chip">Answers ${u.answers_done || 0}</span>
+          <span class="muted">${esc(u.email)}</span>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+          <button class="btn-ghost btn-mini" onclick="resetPw(${u.id})">Set Password</button>
+          <button class="btn-accent btn-mini" onclick="sendResetEmail('${esc(u.email)}')">Email Reset Link</button>
+          <label class="chk" style="margin-left:4px;">
+            <input type="checkbox" ${u.is_admin ? 'checked' : ''} onchange="act('/api/admin/set-admin', { user_id: ${u.id}, is_admin: this.checked ? 1 : 0 })"> Admin
+          </label>
+        </div>
+      </div>
+    `;
+  }).join('') : '<p class="muted">No members registered yet.</p>';
+}
+
+async function resetPw(id) {
+  const pw = prompt('Enter a new password for this member (minimum 8 characters):');
+  if (!pw) return;
+  act('/api/admin/reset-password', { user_id: id, new_password: pw });
+}
+
+async function sendResetEmail(email) {
+  if (!confirm('Send a password reset email to ' + email + '?')) return;
+  const r = await api('/api/forgot-password', { method: 'POST', body: { email } });
+  if (r.ok) alert('Reset email dispatched.');
+  else alert('Failed to send reset email.');
+}
+
+boot();
+</script>
+</body>
+</html>
