@@ -37,6 +37,8 @@
     .btn.cta { background: var(--accent); border: 2px solid var(--accent); color: #fff; }
     .pill { background: #fff; color: var(--navy); border: 2px solid var(--navy); border-radius: 999px; padding: 6px 16px; font-size: .85rem; font-weight: 800; text-decoration: none; cursor: pointer; display: inline-flex; align-items: center; }
     .pill:hover { background: #f0f4f8; }
+    .name-chip { background: #fff; border: 2px solid var(--navy); border-radius: 999px; padding: 6px 16px; font-size: .85rem; font-weight: 800; cursor: pointer; transition: background .2s; }
+    .name-chip:hover { background: var(--lightBlue); }
     .layout { display: grid; grid-template-columns: 1.2fr .8fr; gap: 28px; padding: 26px 0 70px; align-items: start; }
     .card { background: #fff; border-radius: 18px; box-shadow: 0 8px 24px rgba(11, 37, 69, .08); }
     .hero { overflow: hidden; display: grid; grid-template-columns: 1.2fr .8fr; }
@@ -69,6 +71,16 @@
     .badge { border-radius: 6px; padding: 3px 8px; font-size: .72rem; font-weight: 800; color: #fff; }
     .badge-admin { background: var(--accent); }
     .badge-member { background: var(--navy); }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(11, 37, 69, .6); z-index: 100; display: grid; place-items: center; padding: 20px; }
+    .modal-box { background: #fff; border-radius: 18px; padding: 32px; max-width: 440px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+    .modal-box h3 { margin: 0 0 14px; font-size: 1.35rem; font-weight: 800; }
+    .modal-box input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 2px solid var(--slate); margin-bottom: 10px; font-size: .95rem; }
+    .auth-wrap { min-height: 80vh; display: grid; place-items: center; padding: 50px 0; }
+    .auth-card { width: min(480px, 94%); overflow: hidden; }
+    .auth-band { background: var(--navy); border-bottom: 4px solid var(--accent); padding: 18px 26px; font-weight: 800; font-size: 1.2rem; color: #fff; }
+    .auth-body { padding: 24px 26px; }
+    .auth-body input { width: 100%; padding: 11px 14px; border-radius: 10px; border: 2px solid var(--slate); font: inherit; margin: 6px 0 14px; font-size: 1rem; }
+    .form-error { color: var(--red); font-weight: 800; font-size: .9rem; margin-top: 8px; }
     @media(max-width: 900px) { .layout, .hero { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -113,6 +125,27 @@
   </div>
 </div>
 
+<div id="view-welcome" class="hidden">
+  <div class="auth-wrap">
+    <div class="auth-card card" style="width: min(560px, 94%);">
+      <div class="auth-band">Welcome to CICT Studio</div>
+      <div class="auth-body" style="text-align: left;">
+        <h3 style="margin: 0 0 10px; color: var(--navy); font-size: 1.3rem;">Welcome to the studio, <span id="welcome-name">Classmate</span>!</h3>
+        <p style="margin: 0 0 12px; color: var(--slate); font-weight: 600; line-height: 1.6;">Your account is ready. Please take a moment to personalize your account credentials.</p>
+        <div style="background: var(--lightBlue); border: 2px solid var(--navy); border-radius: 10px; padding: 14px 16px; margin: 0 0 16px;">
+          <p style="margin: 0 0 10px; font-weight: 800; color: var(--navy);">How to change your name or password</p>
+          <ol style="margin: 0; padding-left: 20px; color: var(--navy); font-weight: 600; line-height: 1.6;">
+            <li style="margin-bottom: 8px;">Click the pill with <b id="welcome-pill">DrWarren 1</b> in the <b>top right of the screen</b> (next to Log out).</li>
+            <li style="margin-bottom: 8px;">This opens the <b>Change Name or Password</b> box.</li>
+            <li style="margin-bottom: 0;">Enter your current password, type your preferred display name, pick a new 8+ character password, and click <b>Update</b>.</li>
+          </ol>
+        </div>
+        <button class="btn cta" style="width: 100%; padding: 12px;" onclick="enterSite()">Enter the site</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="view-admin" class="hidden wrap" style="padding: 30px 0;">
   <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid var(--accent); padding-bottom:14px; margin-bottom:20px;">
     <h1 style="font-size:1.6rem; font-weight:800; margin:0;">Platform Administration</h1>
@@ -132,36 +165,44 @@
   <div id="admin-members-list"></div>
 </div>
 
-<div id="view-auth-signup" class="hidden wrap" style="padding: 60px 0; max-width: 440px;">
-  <div class="card" style="padding: 24px;">
-    <h2 style="font-weight: 800; font-size: 1.3rem; margin-bottom: 12px;">Join Class</h2>
-    <input type="text" id="signup-name" placeholder="Full Name" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--slate); border-radius: 6px;">
-    <input type="email" id="signup-email" placeholder="Email" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--slate); border-radius: 6px;">
-    <input type="password" id="signup-password" placeholder="Password (8+ chars)" style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid var(--slate); border-radius: 6px;">
-    <button class="btn cta" style="width: 100%; padding: 10px;" onclick="signup()">Create Account</button>
-    <p style="text-align: center; margin-top: 10px; font-size: .9rem;">Already enrolled? <a href="#" onclick="showAuth('login'); return false;" style="color: var(--accent); font-weight: 700;">Log In</a></p>
+<div id="view-auth-signup" class="hidden auth-wrap">
+  <div class="auth-card card">
+    <div class="auth-band">Join Class</div>
+    <div class="auth-body">
+      <input type="text" id="signup-name" placeholder="Full Name">
+      <input type="email" id="signup-email" placeholder="Email">
+      <input type="password" id="signup-password" placeholder="Password (8+ chars)">
+      <button class="btn cta" style="width: 100%; padding: 11px;" onclick="signup()">Create Account</button>
+      <p style="text-align: center; margin-top: 10px; font-size: .9rem;">Already enrolled? <a href="#" onclick="showAuth('login'); return false;" style="color: var(--accent); font-weight: 700;">Log In</a></p>
+      <p class="form-error" id="signup-error" style="text-align:center;"></p>
+    </div>
   </div>
 </div>
 
-<div id="view-auth-login" class="hidden wrap" style="padding: 60px 0; max-width: 440px;">
-  <div class="card" style="padding: 24px;">
-    <h2 style="font-weight: 800; font-size: 1.3rem; margin-bottom: 12px;">Sign In</h2>
-    <input type="email" id="login-email" placeholder="Email" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--slate); border-radius: 6px;">
-    <input type="password" id="login-password" placeholder="Password" style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid var(--slate); border-radius: 6px;">
-    <button class="btn cta" style="width: 100%; padding: 10px;" onclick="login()">Log In</button>
-    <p style="text-align: center; margin-top: 10px; font-size: .9rem;">Need an account? <a href="#" onclick="showAuth('signup'); return false;" style="color: var(--accent); font-weight: 700;">Sign Up</a></p>
-    <p style="text-align: center; margin-top: 6px; font-size: .85rem;"><a href="#" onclick="showForgot(); return false;" style="color: var(--slate);">Forgot Password?</a></p>
+<div id="view-auth-login" class="hidden auth-wrap">
+  <div class="auth-card card">
+    <div class="auth-band">Sign In</div>
+    <div class="auth-body">
+      <input type="email" id="login-email" placeholder="Email">
+      <input type="password" id="login-password" placeholder="Password">
+      <button class="btn cta" style="width: 100%; padding: 11px;" onclick="login()">Log In</button>
+      <p style="text-align: center; margin-top: 10px; font-size: .9rem;">Need an account? <a href="#" onclick="showAuth('signup'); return false;" style="color: var(--accent); font-weight: 700;">Sign Up</a></p>
+      <p style="text-align: center; margin-top: 6px; font-size: .85rem;"><a href="#" onclick="showForgot(); return false;" style="color: var(--slate);">Forgot Password?</a></p>
+      <p class="form-error" id="login-error" style="text-align:center;"></p>
+    </div>
   </div>
 </div>
 
-<div id="view-auth-forgot" class="hidden wrap" style="padding: 60px 0; max-width: 440px;">
-  <div class="card" style="padding: 24px;">
-    <h2 style="font-weight: 800; font-size: 1.3rem; margin-bottom: 12px;">Reset Password</h2>
-    <p style="color: var(--slate); font-size: .9rem; margin-bottom: 12px;">Enter your email to receive a password reset link.</p>
-    <input type="email" id="forgot-email" placeholder="Email" style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid var(--slate); border-radius: 6px;">
-    <button class="btn cta" style="width: 100%; padding: 10px;" onclick="requestReset()">Send Link</button>
-    <p id="forgot-status" style="text-align: center; margin-top: 10px; font-size: .85rem; color: var(--navy);"></p>
-    <p style="text-align: center; margin-top: 10px; font-size: .9rem;"><a href="#" onclick="showAuth('login'); return false;" style="color: var(--accent); font-weight: 700;">Back to Log In</a></p>
+<div id="view-auth-forgot" class="hidden auth-wrap">
+  <div class="auth-card card">
+    <div class="auth-band">Reset Password</div>
+    <div class="auth-body">
+      <p style="color: var(--slate); font-size: .9rem; margin-bottom: 12px;">Enter your email to receive a password reset link.</p>
+      <input type="email" id="forgot-email" placeholder="Email">
+      <button class="btn cta" style="width: 100%; padding: 11px;" onclick="requestReset()">Send Link</button>
+      <p id="forgot-status" style="text-align: center; margin-top: 10px; font-size: .85rem; color: var(--navy);"></p>
+      <p style="text-align: center; margin-top: 10px; font-size: .9rem;"><a href="#" onclick="showAuth('login'); return false;" style="color: var(--accent); font-weight: 700;">Back to Log In</a></p>
+    </div>
   </div>
 </div>
 
@@ -171,6 +212,22 @@
     <span id="save-status">All changes saved</span>
   </nav>
   <div id="course-content"></div>
+</div>
+
+<!-- CHANGE NAME OR PASSWORD MODAL -->
+<div id="change-password-modal" class="modal-overlay hidden" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="modal-box" style="text-align: left;">
+    <h3 style="color: var(--navy);">Change Name or Password</h3>
+    <input type="password" id="cp-current" placeholder="Current Password">
+    <input type="text" id="cp-name" placeholder="New display name (leave blank to keep current)">
+    <input type="password" id="cp-new" placeholder="New Password (8+ characters)">
+    <input type="password" id="cp-new-confirm" placeholder="Confirm New Password">
+    <p class="form-error" id="cp-error" style="text-align: center;"></p>
+    <div style="display:flex; gap:10px; justify-content:center; margin-top:16px;">
+      <button class="pill" onclick="document.getElementById('change-password-modal').classList.add('hidden')">Cancel</button>
+      <button class="btn cta small" onclick="changePassword()">Update</button>
+    </div>
+  </div>
 </div>
 
 <footer style="background: var(--navy); color: #fff; padding: 30px 0; margin-top: 60px; text-align: center; font-size: .9rem;">
@@ -282,7 +339,7 @@ async function applySettings() {
 }
 
 function hideViews() {
-  ['view-home', 'view-admin', 'view-auth-signup', 'view-auth-login', 'view-auth-forgot', 'view-course'].forEach(id => {
+  ['view-home', 'view-admin', 'view-welcome', 'view-auth-signup', 'view-auth-login', 'view-auth-forgot', 'view-course'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add('hidden');
   });
@@ -312,6 +369,26 @@ function showForgot() {
   document.getElementById('view-auth-forgot').classList.remove('hidden');
 }
 
+function showWelcome() {
+  hideViews();
+  const name = localStorage.getItem('user_name') || 'Classmate';
+  const num = localStorage.getItem('user_number') || '1';
+  document.getElementById('welcome-name').innerText = name;
+  document.getElementById('welcome-pill').innerText = name + ' ' + num;
+  document.getElementById('view-welcome').classList.remove('hidden');
+}
+
+async function enterSite() {
+  const token = localStorage.getItem('token');
+  try {
+    await fetch('/api/welcome-seen', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+  } catch (e) {}
+  showHome();
+}
+
 function logout() {
   localStorage.clear();
   showHome();
@@ -337,7 +414,7 @@ function renderHeader() {
     host.innerHTML = `
       <div style="display:flex; align-items:center; gap:8px;">
         ${adminPill}
-        <span class="pill" style="cursor:default;">${escapeHtml(name)}${numDisplay}</span>
+        <span class="name-chip" onclick="document.getElementById('change-password-modal').classList.remove('hidden')" title="Click to change name or password">${escapeHtml(name)}${numDisplay}</span>
         <button class="pill" onclick="logout()">Log out</button>
       </div>
     `;
@@ -346,6 +423,58 @@ function renderHeader() {
       <button class="btn small cta" onclick="showAuth('signup')">Sign Up</button>
       <button class="btn small ghost" style="margin-left: 6px;" onclick="showAuth('login')">Log In</button>
     `;
+  }
+}
+
+async function changePassword() {
+  const errEl = document.getElementById('cp-error');
+  errEl.innerText = '';
+  const newName = document.getElementById('cp-name').value.trim();
+  const currentPassword = document.getElementById('cp-current').value;
+  const newPassword = document.getElementById('cp-new').value;
+  const confirmNewPassword = document.getElementById('cp-new-confirm').value;
+
+  if (!newName && !newPassword && !confirmNewPassword) {
+    errEl.innerText = 'Enter a new name, a new password, or both.';
+    return;
+  }
+  if (!currentPassword) {
+    errEl.innerText = 'Please enter your current password.';
+    return;
+  }
+  if ((newPassword || confirmNewPassword) && newPassword !== confirmNewPassword) {
+    errEl.innerText = 'New passwords do not match.';
+    return;
+  }
+  if (newPassword && newPassword.length < 8) {
+    errEl.innerText = 'New password must be 8+ characters.';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/change-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + localStorage.getItem('token')
+      },
+      body: JSON.stringify({ currentPassword, newPassword, newName })
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (newName) localStorage.setItem('user_name', newName);
+      alert(newName && newPassword ? 'Name and password updated!' : newName ? 'Name updated!' : 'Password changed!');
+      document.getElementById('change-password-modal').classList.add('hidden');
+      document.getElementById('cp-name').value = '';
+      document.getElementById('cp-current').value = '';
+      document.getElementById('cp-new').value = '';
+      document.getElementById('cp-new-confirm').value = '';
+      renderHeader();
+    } else {
+      errEl.innerText = data.error || 'Failed to update credentials.';
+    }
+  } catch (e) {
+    errEl.innerText = 'Network connection error.';
   }
 }
 
@@ -485,34 +614,70 @@ async function requestReset() {
 }
 
 async function login() {
-  const email = document.getElementById('login-email').value;
+  const errEl = document.getElementById('login-error');
+  errEl.innerText = '';
+  const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
-  const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
-  const data = await r.json();
-  if (data.token) {
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user_name', data.name);
-    localStorage.setItem('user_email', data.email);
-    localStorage.setItem('user_number', data.user_number || '1');
-    localStorage.setItem('user_status', data.status || 'Admin');
-    showHome();
-  } else { alert(data.error || 'Login failed'); }
+
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await r.json();
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user_name', data.name);
+      localStorage.setItem('user_email', data.email);
+      localStorage.setItem('user_number', data.user_number || '1');
+      localStorage.setItem('user_status', data.status || 'Admin');
+
+      if (data.welcomed === 0) {
+        showWelcome();
+      } else {
+        showHome();
+      }
+    } else {
+      errEl.innerText = data.error || 'Login failed.';
+    }
+  } catch (e) {
+    errEl.innerText = 'Network error during sign in.';
+  }
 }
 
 async function signup() {
-  const name = document.getElementById('signup-name').value;
-  const email = document.getElementById('signup-email').value;
+  const errEl = document.getElementById('signup-error');
+  errEl.innerText = '';
+  const name = document.getElementById('signup-name').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
-  const r = await fetch('/api/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, password }) });
-  const data = await r.json();
-  if (data.token) {
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user_name', data.name);
-    localStorage.setItem('user_email', data.email);
-    localStorage.setItem('user_number', data.user_number || '1');
-    localStorage.setItem('user_status', data.status || 'Member');
-    showHome();
-  } else { alert(data.error || 'Sign-up failed'); }
+
+  if (!name || !email || !password) {
+    errEl.innerText = 'Please fill out all fields.';
+    return;
+  }
+
+  try {
+    const r = await fetch('/api/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password })
+    });
+    const data = await r.json();
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user_name', data.name);
+      localStorage.setItem('user_email', data.email);
+      localStorage.setItem('user_number', data.user_number || '1');
+      localStorage.setItem('user_status', data.status || 'Member');
+      showWelcome();
+    } else {
+      errEl.innerText = data.error || 'Sign-up failed.';
+    }
+  } catch (e) {
+    errEl.innerText = 'Network error during signup.';
+  }
 }
 
 function escapeHtml(s) {
