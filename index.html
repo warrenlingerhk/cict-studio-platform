@@ -320,17 +320,24 @@ function logout() {
 function renderHeader() {
   const host = document.getElementById('head-actions');
   const token = localStorage.getItem('token');
-  const name = localStorage.getItem('user_name') || 'Classmate';
-  const num = localStorage.getItem('user_number') || '1';
+  const email = (localStorage.getItem('user_email') || '').toLowerCase();
+  const name = localStorage.getItem('user_name') || 'DrWarren';
+  
+  let rawNum = localStorage.getItem('user_number');
+  if (!rawNum || rawNum === 'undefined' || rawNum === 'null') {
+    rawNum = (email === 'drwarren@cict.co') ? '1' : '';
+  }
+  
   const status = (localStorage.getItem('user_status') || '').toLowerCase();
-  const isAdmin = status === 'admin' || num === '1';
+  const isAdmin = status === 'admin' || rawNum === '1' || email === 'drwarren@cict.co';
 
   if (token) {
-    const adminButton = isAdmin ? `<button class="pill" style="margin-right:8px;" onclick="showAdmin()">Admin</button>` : '';
+    const adminPill = isAdmin ? `<button class="pill" onclick="showAdmin()">Admin</button>` : '';
+    const numDisplay = rawNum ? ` ${escapeHtml(rawNum)}` : '';
     host.innerHTML = `
-      <div style="display:inline-flex; align-items:center; gap:8px;">
-        ${adminButton}
-        <span class="pill" style="cursor:default;">${escapeHtml(name)} ${escapeHtml(num)}</span>
+      <div style="display:flex; align-items:center; gap:8px;">
+        ${adminPill}
+        <span class="pill" style="cursor:default;">${escapeHtml(name)}${numDisplay}</span>
         <button class="pill" onclick="logout()">Log out</button>
       </div>
     `;
@@ -427,7 +434,7 @@ async function loadAdminData() {
       host.innerHTML = users.map(u => `
         <div class="member-row">
           <div>
-            <b>${escapeHtml(u.name)} (${escapeHtml(u.member_number)})</b>
+            <b>${escapeHtml(u.name)} (${escapeHtml(u.member_number || '1')})</b>
             <span class="badge ${u.is_admin ? 'badge-admin' : 'badge-member'}">${u.is_admin ? 'ADMIN' : 'MEMBER'}</span>
             <div style="font-size:.85rem; color:var(--slate); margin-top:4px;">${escapeHtml(u.email)}</div>
           </div>
@@ -485,8 +492,9 @@ async function login() {
   if (data.token) {
     localStorage.setItem('token', data.token);
     localStorage.setItem('user_name', data.name);
-    localStorage.setItem('user_number', data.user_number);
-    localStorage.setItem('user_status', data.status || '');
+    localStorage.setItem('user_email', data.email);
+    localStorage.setItem('user_number', data.user_number || '1');
+    localStorage.setItem('user_status', data.status || 'Admin');
     showHome();
   } else { alert(data.error || 'Login failed'); }
 }
@@ -500,8 +508,9 @@ async function signup() {
   if (data.token) {
     localStorage.setItem('token', data.token);
     localStorage.setItem('user_name', data.name);
-    localStorage.setItem('user_number', data.user_number);
-    localStorage.setItem('user_status', data.status || '');
+    localStorage.setItem('user_email', data.email);
+    localStorage.setItem('user_number', data.user_number || '1');
+    localStorage.setItem('user_status', data.status || 'Member');
     showHome();
   } else { alert(data.error || 'Sign-up failed'); }
 }
