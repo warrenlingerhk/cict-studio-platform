@@ -1,1 +1,112 @@
 
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CICT Studio — Password Reset</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>
+  :root {
+    --navy: #0B2545;
+    --accent: #D4AF37;
+    --bg: #F8F9FA;
+    --slate: #6C757D;
+    --card: #FFFFFF;
+  }
+  body { background: var(--bg); color: var(--navy); font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; margin: 0; display: grid; place-items: center; min-height: 100vh; }
+  .card { background: var(--card); border-radius: 16px; box-shadow: 0 8px 24px rgba(11,37,69,.10); width: min(440px, 94%); overflow: hidden; }
+  .band { background: var(--navy); color: #fff; font-weight: 800; padding: 18px 24px; font-size: 1.15rem; border-bottom: 4px solid var(--accent); }
+  .body { padding: 24px; }
+  input { width: 100%; box-sizing: border-box; padding: 11px 14px; border-radius: 8px; border: 2px solid #dfe6ee; font: inherit; margin: 6px 0 14px; }
+  button { width: 100%; border: none; border-radius: 999px; background: var(--accent); color: #fff; font-weight: 800; padding: 12px; font-size: 1rem; cursor: pointer; }
+  button:hover { opacity: .92; }
+  .msg { font-weight: 600; color: var(--slate); margin: 10px 0 0; font-size: .95rem; }
+  .err { font-weight: 800; color: #C62828; margin: 10px 0 0; font-size: .9rem; }
+  a { color: var(--navy); font-weight: 800; text-decoration: underline; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="band">CICT Studio — Password Reset</div>
+  <div class="body">
+    <div id="mode-request">
+      <p class="msg">Enter your registered email address and we will send you a reset link.</p>
+      <input id="req-email" type="email" placeholder="name@domain.com">
+      <button onclick="requestReset()">Send Reset Link</button>
+      <p class="msg" id="req-msg"></p>
+    </div>
+
+    <div id="mode-set" class="hidden">
+      <p class="msg">Choose your new password (minimum 8 characters).</p>
+      <input id="new-pass" type="password" placeholder="New Password">
+      <input id="new-pass-2" type="password" placeholder="Confirm New Password">
+      <button onclick="submitReset()">Save New Password</button>
+      <p class="err" id="set-err"></p>
+    </div>
+
+    <div id="mode-done" class="hidden">
+      <p class="msg">Your password has been updated. <a href="/">Click here to sign in</a>.</p>
+    </div>
+
+    <div id="mode-invalid" class="hidden">
+      <p class="msg">This reset link has expired or is invalid. <a href="/reset.html">Request a new reset link</a>.</p>
+    </div>
+
+    <p class="msg" style="margin-top: 18px;"><a href="/">Back to Dashboard</a></p>
+  </div>
+</div>
+
+<script>
+const token = new URLSearchParams(location.search).get('token');
+
+async function requestReset() {
+  const email = document.getElementById('req-email').value.trim();
+  const msgEl = document.getElementById('req-msg');
+  if (!email) { msgEl.innerText = 'Please enter your email.'; return; }
+  
+  await fetch('/api/forgot-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  });
+  msgEl.innerText = 'If this email is enrolled, a reset link has been dispatched. Links expire in one hour.';
+}
+
+async function submitReset() {
+  const p1 = document.getElementById('new-pass').value;
+  const p2 = document.getElementById('new-pass-2').value;
+  const err = document.getElementById('set-err');
+  err.innerText = '';
+
+  if (p1.length < 8) { err.innerText = 'Password must be at least 8 characters.'; return; }
+  if (p1 !== p2) { err.innerText = 'Passwords do not match.'; return; }
+
+  const r = await fetch('/api/reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, newPassword: p1 })
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { err.innerText = j.error || 'Reset failed.'; return; }
+
+  document.getElementById('mode-set').classList.add('hidden');
+  document.getElementById('mode-done').classList.remove('hidden');
+}
+
+(async function boot() {
+  if (!token) return;
+  document.getElementById('mode-request').classList.add('hidden');
+  const r = await fetch('/api/reset-check?token=' + encodeURIComponent(token));
+  const j = await r.json().catch(() => ({}));
+  if (j.valid) {
+    document.getElementById('mode-set').classList.remove('hidden');
+  } else {
+    document.getElementById('mode-invalid').classList.remove('hidden');
+  }
+})();
+</script>
+</body>
+</html>
