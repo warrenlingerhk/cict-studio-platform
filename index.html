@@ -136,6 +136,7 @@
   </div>
 </div>
 
+<!-- FULL ADMIN DASHBOARD -->
 <div id="view-admin" class="hidden wrap" style="padding: 30px 0;">
   <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid var(--accent); padding-bottom:14px; margin-bottom:20px;">
     <h1 style="font-size:1.6rem; font-weight:800; margin:0;">Admin Dashboard</h1>
@@ -229,6 +230,7 @@ let currentLessonId = '', LESSONS = [];
 
 function isOnline(ls) {
   if (!ls) return false;
+  // SQLite timestamps come back in UTC format: 'YYYY-MM-DD HH:MM:SS'
   const t = Date.parse(String(ls).replace(' ', 'T') + 'Z');
   return !isNaN(t) && (Date.now() - t) < 5 * 60000;
 }
@@ -655,6 +657,23 @@ async function signup() {
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+
+// 60-second heartbeat to update last_seen online activity
+setInterval(function() {
+  const token = localStorage.getItem('token');
+  if (token) {
+    fetch('/api/heartbeat', { headers: { 'Authorization': 'Bearer ' + token } }).catch(function() {});
+  }
+}, 60000);
+
+// Auto-refresh admin view every 60 seconds if open
+setInterval(function() {
+  const token = localStorage.getItem('token');
+  const adminView = document.getElementById('view-admin');
+  if (token && adminView && !adminView.classList.contains('hidden')) {
+    loadAdminDashboard();
+  }
+}, 60000);
 
 applySettings();
 showHome();
