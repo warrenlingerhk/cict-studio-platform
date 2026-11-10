@@ -230,8 +230,8 @@ let currentLessonId = '', LESSONS = [];
 
 function isOnline(ls) {
   if (!ls) return false;
-  // SQLite timestamps come back in UTC format: 'YYYY-MM-DD HH:MM:SS'
-  const t = Date.parse(String(ls).replace(' ', 'T') + 'Z');
+  const iso = String(ls).replace(' ', 'T') + (String(ls).endsWith('Z') ? '' : 'Z');
+  const t = Date.parse(iso);
   return !isNaN(t) && (Date.now() - t) < 5 * 60000;
 }
 
@@ -363,6 +363,9 @@ function renderHeader() {
 async function loadAdminDashboard() {
   const token = localStorage.getItem('token');
   try {
+    // Send heartbeat when opening admin dashboard
+    fetch('/api/heartbeat', { headers: { 'Authorization': 'Bearer ' + token } }).catch(function(){});
+
     const [statsRes, analyticsRes, usersRes] = await Promise.all([
       fetch('/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + token } }),
       fetch('/api/admin/analytics', { headers: { 'Authorization': 'Bearer ' + token } }),
@@ -615,6 +618,7 @@ async function login() {
       localStorage.setItem('user_email', data.email);
       localStorage.setItem('user_number', data.user_number || '1');
       localStorage.setItem('user_status', data.status || 'Approved');
+      sendHeartbeat();
       if (data.welcomed === 0) showWelcome();
       else showHome();
     } else {
@@ -645,6 +649,7 @@ async function signup() {
       localStorage.setItem('user_email', data.email);
       localStorage.setItem('user_number', data.user_number || '1');
       localStorage.setItem('user_status', data.status || 'Pending');
+      sendHeartbeat();
       showWelcome();
     } else {
       errEl.innerText = data.error || 'Sign-up failed.';
@@ -658,22 +663,27 @@ function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-// 60-second heartbeat to update last_seen online activity
-setInterval(function() {
+function sendHeartbeat() {
   const token = localStorage.getItem('token');
   if (token) {
-    fetch('/api/heartbeat', { headers: { 'Authorization': 'Bearer ' + token } }).catch(function() {});
+    fetch('/api/heartbeat', { headers: { 'Authorization': 'Bearer ' + token } }).catch(function(){});
   }
-}, 60000);
+}
 
-// Auto-refresh admin view every 60 seconds if open
+// Immediate heartbeat on page load
+sendHeartbeat();
+
+// Heartbeat every 45 seconds
+setInterval(sendHeartbeat, 45000);
+
+// Auto-refresh admin view every 45 seconds if open
 setInterval(function() {
   const token = localStorage.getItem('token');
   const adminView = document.getElementById('view-admin');
   if (token && adminView && !adminView.classList.contains('hidden')) {
     loadAdminDashboard();
   }
-}, 60000);
+}, 45000);
 
 applySettings();
 showHome();
