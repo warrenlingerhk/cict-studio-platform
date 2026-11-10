@@ -283,7 +283,7 @@ async function loadAll() {
     return `
       <div class="row">
         <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
-          <b>#${esc(u.member_number || '')} ${esc(u.name)}</b>
+          <b>${esc(u.member_number || '')} ${esc(u.name)}</b>
           <span class="dot ${on ? 'on' : 'off'}" title="${on ? 'On site now' : 'Last seen ' + (u.last_seen || 'never')}"></span>
           <span class="badge ${sb}">${esc(u.status || 'Pending').toUpperCase()}</span>
           ${u.is_admin ? '<span class="badge a">ADMIN</span>' : ''}
