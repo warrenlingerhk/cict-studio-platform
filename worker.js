@@ -26,6 +26,9 @@ export default {
       if (url.pathname === '/api/welcome-seen' && request.method === 'POST') {
         return await handleWelcomeSeen(request, env);
       }
+      if (url.pathname === '/api/heartbeat' && request.method === 'GET') {
+        return await handleHeartbeat(request, env);
+      }
 
       // 2. Posts
       if (url.pathname === '/api/posts') {
@@ -90,8 +93,8 @@ async function handleLogin(request, env) {
   if (!user && cleanEmail === 'drwarren@cict.co') {
     const hash = await hashPassword(cleanEmail);
     await env.DB.prepare(`
-      INSERT INTO users (name, email, password, member_number, status, is_admin, is_paid, welcomed, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, 1, 0, datetime('now'))
+      INSERT INTO users (name, email, password, member_number, status, is_admin, is_paid, welcomed, created_at, last_seen)
+      VALUES (?, ?, ?, ?, ?, ?, 1, 0, datetime('now'), datetime('now'))
     `).bind('DrWarren', cleanEmail, hash, '1', 'Approved', 1).run();
 
     user = await env.DB.prepare('SELECT * FROM users WHERE LOWER(email) = ?')
@@ -213,6 +216,15 @@ async function handleWelcomeSeen(request, env) {
     await env.DB.prepare('UPDATE users SET welcomed = 1 WHERE id = ?').bind(user.id).run();
   } catch (e) {}
   return json({ success: true });
+}
+
+async function handleHeartbeat(request, env) {
+  const user = await authenticate(request, env);
+  if (!user) return json({ error: 'Unauthorized.' }, 401);
+  try {
+    await env.DB.prepare("UPDATE users SET last_seen = datetime('now') WHERE id = ?").bind(user.id).run();
+  } catch (e) {}
+  return json({ ok: true });
 }
 
 // ============================================================================
@@ -407,9 +419,3 @@ function handleCors() {
   return new Response(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
-    }
-  });
-}
