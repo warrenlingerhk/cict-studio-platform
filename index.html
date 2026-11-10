@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,34 +13,29 @@
     :root {
       --primary: #0B2545;
       --accent: #D4AF37;
-      --bg: #F8F9FA;
-      --card: #FFFFFF;
+      --bg: #FFFFFF;
       --navy: #0B2545;
       --slate: #6C757D;
       --lightBlue: #E9ECEF;
       --red: #C62828;
-      --amber: #B7791F;
-      --green: #1B7F3B;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body { background: var(--bg); color: var(--navy); font-family: 'Nunito Sans', sans-serif; font-size: 16px; }
+    body { background: var(--bg); color: var(--navy); font-family: 'Nunito Sans', sans-serif; margin: 0; font-size: 16px; }
     h1, h2, h3, .brand { font-family: 'Poppins', sans-serif; }
     .hidden { display: none !important; }
-    .wrap { width: min(1180px, 94%); margin-inline: auto; }
-    .site-head { position: sticky; top: 0; z-index: 50; background: #fff; }
+    .wrap { width: min(1150px, 94%); margin-inline: auto; }
+    .site-head { position: sticky; top: 0; z-index: 50; background: var(--bg); }
     .head-in { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 3px solid var(--navy); }
     .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.25rem; color: var(--navy); text-decoration: none; }
     .brand-logo { width: 44px; height: 44px; object-fit: contain; }
-    .btn { border-radius: 999px; font-weight: 800; cursor: pointer; transition: transform .15s; font-family: 'Nunito Sans'; border: none; }
+    .btn { border-radius: 999px; font-weight: 800; cursor: pointer; transition: transform .15s; font-family: 'Nunito Sans'; }
     .btn:hover { transform: translateY(-2px); }
     .btn.small { padding: 6px 16px; font-size: .85rem; }
     .btn.ghost { background: #fff; border: 2px solid var(--navy); color: var(--navy); }
     .btn.cta { background: var(--accent); border: 2px solid var(--accent); color: #fff; }
     .pill { background: #fff; color: var(--navy); border: 2px solid var(--navy); border-radius: 999px; padding: 6px 16px; font-size: .85rem; font-weight: 800; text-decoration: none; cursor: pointer; display: inline-flex; align-items: center; }
     .pill:hover { background: #f0f4f8; }
-    .name-chip { background: #fff; border: 2px solid var(--navy); border-radius: 999px; padding: 6px 16px; font-size: .85rem; font-weight: 800; cursor: pointer; }
-    .name-chip:hover { background: var(--lightBlue); }
     .layout { display: grid; grid-template-columns: 1.2fr .8fr; gap: 28px; padding: 26px 0 70px; align-items: start; }
     .card { background: #fff; border-radius: 18px; box-shadow: 0 8px 24px rgba(11, 37, 69, .08); }
     .hero { overflow: hidden; display: grid; grid-template-columns: 1.2fr .8fr; }
@@ -57,39 +54,22 @@
     .community h2 { font-size: 1.5rem; margin: 0 0 6px; }
     .community-sub { color: var(--slate); font-weight: 700; margin: 0 0 16px; }
     #post-input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 2px solid var(--slate); font: inherit; font-size: 1rem; min-height: 80px; }
-    .post { background: #fff; border-radius: 12px; padding: 16px 18px; margin-top: 16px; border: 1px solid var(--lightBlue); }
+    .post { background: #f8f9fa; border-radius: 12px; padding: 16px 18px; margin-top: 16px; }
     .post-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
     .post-name { font-weight: 800; }
     .post-date { font-size: .8rem; color: var(--slate); font-weight: 700; }
-    .dash-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin: 12px 0 20px; }
-    .dash-card { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 2px 8px rgba(11,37,69,.06); }
-    .dash-card b { font-size: 1.7rem; display: block; color: var(--navy); margin-bottom: 2px; }
-    .dash-card span { color: var(--slate); font-size: .85rem; font-weight: 700; }
-    .member-row { background: #fff; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; box-shadow: 0 2px 6px rgba(11,37,69,.06); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
-    .badge { border-radius: 6px; padding: 2px 8px; font-size: .72rem; font-weight: 800; color: #fff; }
-    .badge.app { background: var(--green); }
-    .badge.pen { background: var(--amber); }
-    .badge.ban { background: var(--red); }
-    .badge.adm { background: var(--accent); }
-    .chip { background: #eef2f7; border-radius: 6px; padding: 3px 8px; font-size: .75rem; font-weight: 800; color: var(--navy); }
-    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-    .dot.on { background: var(--green); box-shadow: 0 0 6px rgba(27,127,59,.7); }
-    .dot.off { background: #d3dce6; }
-    .btn-mini { padding: 4px 10px; font-size: .75rem; border-radius: 6px; font-weight: 800; border: none; cursor: pointer; }
-    .btn-navy { background: var(--navy); color: #fff; }
-    .btn-amber { background: var(--amber); color: #fff; }
-    .btn-red { background: var(--red); color: #fff; }
-    .btn-ghost-mini { background: #fff; color: var(--navy); border: 2px solid var(--navy); }
+    .admin-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 16px 0 24px; }
+    .admin-stat { background: #fff; border: 2px solid var(--lightBlue); border-radius: 12px; padding: 18px; }
+    .admin-stat b { font-size: 1.8rem; display: block; color: var(--navy); }
+    .admin-stat span { color: var(--slate); font-size: .85rem; font-weight: 700; }
+    .member-row { background: #fff; border: 1px solid var(--lightBlue); border-radius: 10px; padding: 12px 16px; margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+    .badge { border-radius: 6px; padding: 3px 8px; font-size: .72rem; font-weight: 800; color: #fff; }
+    .badge-admin { background: var(--accent); }
+    .badge-member { background: var(--navy); }
     .modal-overlay { position: fixed; inset: 0; background: rgba(11, 37, 69, .6); z-index: 100; display: grid; place-items: center; padding: 20px; }
     .modal-box { background: #fff; border-radius: 18px; padding: 30px; max-width: 440px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
     .modal-box h3 { margin: 0 0 14px; font-size: 1.35rem; font-weight: 800; }
     .modal-box input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 2px solid var(--slate); margin-bottom: 10px; font-size: .95rem; }
-    .auth-wrap { min-height: 70vh; display: grid; place-items: center; padding: 40px 0; }
-    .auth-card { width: min(480px, 94%); overflow: hidden; background: #fff; border-radius: 18px; box-shadow: 0 8px 24px rgba(11, 37, 69, .10); }
-    .auth-band { background: var(--navy); border-bottom: 4px solid var(--accent); padding: 18px 26px; font-weight: 800; font-size: 1.2rem; color: #fff; }
-    .auth-body { padding: 24px 26px; }
-    .auth-body input { width: 100%; padding: 11px 14px; border-radius: 10px; border: 2px solid var(--slate); font: inherit; margin: 6px 0 14px; font-size: 1rem; }
-    .form-error { color: var(--red); font-weight: 800; font-size: .9rem; margin-top: 8px; }
     @media(max-width: 900px) { .layout, .hero { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -136,65 +116,39 @@
 
 <div id="view-admin" class="hidden wrap" style="padding: 30px 0;">
   <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid var(--accent); padding-bottom:14px; margin-bottom:20px;">
-    <h1 style="font-size:1.6rem; font-weight:800; margin:0;">Admin Dashboard</h1>
-    <button class="pill" onclick="showHome()">&larr; Back to site</button>
+    <h1 style="font-size:1.6rem; font-weight:800; margin:0;">Platform Administration</h1>
+    <button class="pill" onclick="showHome()">&larr; Back to Site</button>
   </div>
 
-  <div class="dash-cards" id="admin-stats"></div>
-
-  <h2 style="font-size:1.2rem; font-weight:800; margin:16px 0 8px;">Analytics</h2>
-  <div class="dash-cards" id="admin-analytics"></div>
-
-  <div style="display:flex; justify-content:space-between; align-items:center; margin:24px 0 12px;">
-    <h2 style="font-size:1.2rem; font-weight:800; margin:0;">Classmates &mdash; full member list</h2>
-    <button id="sync-btn" class="pill" style="font-size:.78rem; padding:6px 14px;" onclick="syncMembersSheet()">Sync Members Sheet</button>
+  <h2>Overview</h2>
+  <div class="admin-cards">
+    <div class="admin-stat"><b id="stat-members">1</b><span>Enrolled Members</span></div>
+    <div class="admin-stat"><b id="stat-posts">0</b><span>Discussion Posts</span></div>
   </div>
+
+  <h2>Members Roster</h2>
   <div id="admin-members-list"></div>
 </div>
 
-<div id="view-welcome" class="hidden auth-wrap">
-  <div class="auth-card" style="width: min(560px, 94%);">
-    <div class="auth-band">Welcome to CICT Studio</div>
-    <div class="auth-body" style="text-align: left;">
-      <h3 style="margin: 0 0 10px; color: var(--navy); font-size: 1.3rem;">Welcome to the studio, <span id="welcome-name">Classmate</span>!</h3>
-      <p style="margin: 0 0 12px; color: var(--slate); font-weight: 600; line-height: 1.6;">Your account is ready. Please personalize your display name and password.</p>
-      <div style="background: var(--lightBlue); border: 2px solid var(--navy); border-radius: 10px; padding: 14px 16px; margin: 0 0 16px;">
-        <p style="margin: 0 0 10px; font-weight: 800; color: var(--navy);">How to change your name or password</p>
-        <ol style="margin: 0; padding-left: 20px; color: var(--navy); font-weight: 600; line-height: 1.6;">
-          <li style="margin-bottom: 8px;">Click your name pill in the <b>top right of the screen</b> (next to Log out).</li>
-          <li style="margin-bottom: 8px;">This opens the <b>Change Name or Password</b> box.</li>
-          <li style="margin-bottom: 0;">Enter your current password, type your preferred display name, pick a new 8+ character password, and click <b>Update</b>.</li>
-        </ol>
-      </div>
-      <button class="btn cta" style="width: 100%; padding: 12px;" onclick="enterSite()">Enter the site</button>
-    </div>
+<div id="view-auth-signup" class="hidden wrap" style="padding: 60px 0; max-width: 440px;">
+  <div class="card" style="padding: 24px;">
+    <h2 style="font-weight: 800; font-size: 1.3rem; margin-bottom: 12px;">Join Class</h2>
+    <input type="text" id="signup-name" placeholder="Full Name" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--slate); border-radius: 6px;">
+    <input type="email" id="signup-email" placeholder="Email" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--slate); border-radius: 6px;">
+    <input type="password" id="signup-password" placeholder="Password (8+ chars)" style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid var(--slate); border-radius: 6px;">
+    <button class="btn cta" style="width: 100%; padding: 10px;" onclick="signup()">Create Account</button>
+    <p style="text-align: center; margin-top: 10px; font-size: .9rem;">Already enrolled? <a href="#" onclick="showAuth('login'); return false;" style="color: var(--accent); font-weight: 700;">Log In</a></p>
   </div>
 </div>
 
-<div id="view-auth-signup" class="hidden auth-wrap">
-  <div class="auth-card">
-    <div class="auth-band">Join Class</div>
-    <div class="auth-body">
-      <input type="text" id="signup-name" placeholder="Full Name">
-      <input type="email" id="signup-email" placeholder="Email">
-      <input type="password" id="signup-password" placeholder="Password (8+ chars)">
-      <button class="btn cta" style="width: 100%; padding: 11px;" onclick="signup()">Create Account</button>
-      <p style="text-align: center; margin-top: 10px; font-size: .9rem;">Already enrolled? <a href="#" onclick="showAuth('login'); return false;" style="color: var(--accent); font-weight: 700;">Log In</a></p>
-      <p class="form-error" id="signup-error" style="text-align:center;"></p>
-    </div>
-  </div>
-</div>
-
-<div id="view-auth-login" class="hidden auth-wrap">
-  <div class="auth-card">
-    <div class="auth-band">Sign In</div>
-    <div class="auth-body">
-      <input type="email" id="login-email" placeholder="Email">
-      <input type="password" id="login-password" placeholder="Password">
-      <button class="btn cta" style="width: 100%; padding: 11px;" onclick="login()">Log In</button>
-      <p style="text-align: center; margin-top: 10px; font-size: .9rem;">Need an account? <a href="#" onclick="showAuth('signup'); return false;" style="color: var(--accent); font-weight: 700;">Sign Up</a></p>
-      <p class="form-error" id="login-error" style="text-align:center;"></p>
-    </div>
+<div id="view-auth-login" class="hidden wrap" style="padding: 60px 0; max-width: 440px;">
+  <div class="card" style="padding: 24px;">
+    <h2 style="font-weight: 800; font-size: 1.3rem; margin-bottom: 12px;">Sign In</h2>
+    <input type="email" id="login-email" placeholder="Email" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--slate); border-radius: 6px;">
+    <input type="password" id="login-password" placeholder="Password" style="width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid var(--slate); border-radius: 6px;">
+    <button class="btn cta" style="width: 100%; padding: 10px;" onclick="login()">Log In</button>
+    <p style="text-align: center; margin-top: 10px; font-size: .9rem;">Need an account? <a href="#" onclick="showAuth('signup'); return false;" style="color: var(--accent); font-weight: 700;">Sign Up</a></p>
+    <p id="login-error" style="color: var(--red); text-align: center; margin-top: 10px; font-weight: 700;"></p>
   </div>
 </div>
 
@@ -205,7 +159,7 @@
     <input type="text" id="cp-name" placeholder="New display name (leave blank to keep current)">
     <input type="password" id="cp-new" placeholder="New Password (8+ characters)">
     <input type="password" id="cp-new-confirm" placeholder="Confirm New Password">
-    <p class="form-error" id="cp-error" style="text-align: center;"></p>
+    <p id="cp-error" style="color: var(--red); text-align: center; font-weight: 700; font-size: .9rem;"></p>
     <div style="display:flex; gap:10px; justify-content:center; margin-top:16px;">
       <button class="pill" onclick="document.getElementById('change-password-modal').classList.add('hidden')">Cancel</button>
       <button class="btn cta small" onclick="changePassword()">Update</button>
@@ -221,14 +175,7 @@
 const CMS_LESSONS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRayZvzl-ACC99pLhQWes9FU3gI7LDQaikNYRtRh0hQvtbRdZ8Nr1MXkFlaOmfR4AXvkcQpo7fAlfBp/pub?gid=0&single=true&output=csv';
 const SETTINGS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-GuKH1NLoIOG9UoA8WV8jPd3hw8CFzu9g5NnuPnXv9ck-iJ7tbsQKVG1VKXHRLUlfs2y_QesvszsV/pub?gid=507176348&single=true&output=csv';
 
-let currentLessonId = '', LESSONS = [];
-
-function isOnline(ls) {
-  if (!ls) return false;
-  const iso = String(ls).replace(' ', 'T') + (String(ls).endsWith('Z') ? '' : 'Z');
-  const t = Date.parse(iso);
-  return !isNaN(t) && (Date.now() - t) < 5 * 60000;
-}
+let LESSONS = [];
 
 function parseCSV(text) {
   const rows = [];
@@ -283,7 +230,7 @@ async function applySettings() {
 }
 
 function hideViews() {
-  ['view-home', 'view-admin', 'view-welcome', 'view-auth-signup', 'view-auth-login'].forEach(id => {
+  ['view-home', 'view-admin', 'view-auth-signup', 'view-auth-login'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add('hidden');
   });
@@ -300,27 +247,12 @@ function showHome() {
 function showAdmin() {
   hideViews();
   document.getElementById('view-admin').classList.remove('hidden');
-  loadAdminDashboard();
+  loadAdminData();
 }
 
 function showAuth(type) {
   hideViews();
   document.getElementById(type === 'signup' ? 'view-auth-signup' : 'view-auth-login').classList.remove('hidden');
-}
-
-function showWelcome() {
-  hideViews();
-  const name = localStorage.getItem('user_name') || 'Classmate';
-  document.getElementById('welcome-name').innerText = name;
-  document.getElementById('view-welcome').classList.remove('hidden');
-}
-
-async function enterSite() {
-  const token = localStorage.getItem('token');
-  try {
-    await fetch('/api/welcome-seen', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
-  } catch (e) {}
-  showHome();
 }
 
 function logout() {
@@ -342,7 +274,7 @@ function renderHeader() {
     host.innerHTML = `
       <div style="display:flex; align-items:center; gap:8px;">
         ${adminPill}
-        <span class="name-chip" onclick="document.getElementById('change-password-modal').classList.remove('hidden')">${escapeHtml(name)} ${escapeHtml(num)}</span>
+        <button class="pill" onclick="document.getElementById('change-password-modal').classList.remove('hidden')">${escapeHtml(name)} ${escapeHtml(num)}</button>
         <button class="pill" onclick="logout()">Log out</button>
       </div>
     `;
@@ -351,183 +283,6 @@ function renderHeader() {
       <button class="btn small cta" onclick="showAuth('signup')">Sign Up</button>
       <button class="btn small ghost" style="margin-left: 6px;" onclick="showAuth('login')">Log In</button>
     `;
-  }
-}
-
-async function loadAdminDashboard() {
-  const token = localStorage.getItem('token');
-  try {
-    fetch('/api/heartbeat', { headers: { 'Authorization': 'Bearer ' + token } }).catch(function(){});
-
-    const [statsRes, analyticsRes, usersRes] = await Promise.all([
-      fetch('/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + token } }),
-      fetch('/api/admin/analytics', { headers: { 'Authorization': 'Bearer ' + token } }),
-      fetch('/api/admin/users', { headers: { 'Authorization': 'Bearer ' + token } })
-    ]);
-
-    const stats = await statsRes.json();
-    const analytics = await analyticsRes.json();
-    const users = await usersRes.json();
-
-    document.getElementById('admin-stats').innerHTML = `
-      <div class="dash-card"><b>${stats.users || 0}</b><span>Members</span></div>
-      <div class="dash-card"><b>${stats.posts || 0}</b><span>Posts</span></div>
-      <div class="dash-card"><b>${stats.reports || 0}</b><span>Open reports</span></div>
-      <div class="dash-card"><b>${stats.active || 0}</b><span>Active users (last 5 min)</span></div>
-    `;
-
-    document.getElementById('admin-analytics').innerHTML = `
-      <div class="dash-card"><b>${analytics.totalUsers || 0}</b><span>Total users</span></div>
-      <div class="dash-card"><b>${analytics.activeLearners || 0}</b><span>Active learners</span></div>
-      <div class="dash-card"><b>${analytics.eliteRate || 0}%</b><span>Completion rate (1+ lesson)</span></div>
-      <div class="dash-card"><b>${analytics.engagement || '0.0'}</b><span>Engagement</span></div>
-      <div class="dash-card"><b>${analytics.healthRatio || '0.00'}</b><span>Health ratio</span></div>
-    `;
-
-    const host = document.getElementById('admin-members-list');
-    if (Array.isArray(users) && users.length) {
-      host.innerHTML = users.map(u => {
-        const on = isOnline(u.last_seen);
-        const statusBadge = u.status === 'Approved' ? 'badge app' : (u.status === 'Banned' ? 'badge ban' : 'badge pen');
-        const isPaid = u.is_paid === 1;
-
-        return `
-          <div class="member-row">
-            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
-              <b style="color:var(--navy);">#${escapeHtml(u.member_number || '')} ${escapeHtml(u.name)}</b>
-              <span class="dot ${on ? 'on' : 'off'}" title="${on ? 'Online now' : 'Last seen ' + (u.last_seen || 'never')}"></span>
-              <span class="${statusBadge}">${escapeHtml((u.status || 'Pending').toUpperCase())}</span>
-              ${u.is_admin ? '<span class="badge adm">ADMIN</span>' : ''}
-              <span class="chip">Posts ${u.post_count || 0}</span>
-              <span class="chip">Modules ${u.modules_done || 0}</span>
-              <span class="chip">Lessons ${u.lessons_done || 0}</span>
-              <span style="font-size:.82rem; color:var(--slate);">${escapeHtml(u.email)} &middot; joined ${(u.created_at || '').slice(0, 10)}</span>
-            </div>
-            <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
-              <button class="${isPaid ? 'btn-navy' : 'btn-ghost-mini'} btn-mini" onclick="adminSetPaid(${u.id}, ${isPaid ? 0 : 1})">${isPaid ? 'Paid' : 'Free'}</button>
-              <button class="btn-navy btn-mini" ${u.status === 'Approved' ? 'disabled' : ''} onclick="adminSetStatus(${u.id}, 'Approved')">Approve</button>
-              <button class="btn-ghost-mini btn-mini" ${u.status === 'Pending' ? 'disabled' : ''} onclick="adminSetStatus(${u.id}, 'Pending')">Pending</button>
-              <button class="btn-red btn-mini" ${u.status === 'Banned' ? 'disabled' : ''} onclick="adminSetStatus(${u.id}, 'Banned')">Banned</button>
-              <label style="display:flex; align-items:center; gap:4px; font-size:.8rem; font-weight:700; color:var(--navy); margin-left:4px;">
-                <input type="checkbox" ${u.is_admin ? 'checked' : ''} onchange="adminSetAdmin(${u.id}, this.checked ? 1 : 0)"> Admin
-              </label>
-              <button class="btn-ghost-mini btn-mini" onclick="adminResetPw(${u.id})">Reset PW</button>
-            </div>
-          </div>
-        `;
-      }).join('');
-    } else {
-      host.innerHTML = '<p class="community-sub">No members enrolled.</p>';
-    }
-  } catch (err) {}
-}
-
-async function adminSetPaid(userId, isPaid) {
-  const token = localStorage.getItem('token');
-  await fetch('/api/admin/set-paid', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-    body: JSON.stringify({ user_id: userId, is_paid: isPaid })
-  });
-  loadAdminDashboard();
-}
-
-async function adminSetStatus(userId, status) {
-  const token = localStorage.getItem('token');
-  await fetch('/api/admin/status', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-    body: JSON.stringify({ user_id: userId, status })
-  });
-  loadAdminDashboard();
-}
-
-async function adminSetAdmin(userId, isAdmin) {
-  const token = localStorage.getItem('token');
-  await fetch('/api/admin/set-admin', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-    body: JSON.stringify({ user_id: userId, is_admin: isAdmin })
-  });
-  loadAdminDashboard();
-}
-
-async function adminResetPw(userId) {
-  const newPw = prompt('Enter a new password for this member (minimum 8 characters):');
-  if (!newPw) return;
-  const token = localStorage.getItem('token');
-  const r = await fetch('/api/admin/reset-password', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-    body: JSON.stringify({ user_id: userId, new_password: newPw })
-  });
-  if (r.ok) alert('Password updated.');
-  else alert('Failed to update password.');
-}
-
-async function syncMembersSheet() {
-  const btn = document.getElementById('sync-btn');
-  btn.disabled = true;
-  btn.innerText = 'Syncing...';
-  const token = localStorage.getItem('token');
-  try {
-    const r = await fetch('/api/admin/sync-members', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
-    if (r.ok) alert('AMS Members sheet synced successfully.');
-    else alert('Failed to sync members sheet.');
-  } catch (e) {
-    alert('Sync error: ' + e.message);
-  }
-  btn.disabled = false;
-  btn.innerText = 'Sync Members Sheet';
-  loadAdminDashboard();
-}
-
-async function changePassword() {
-  const errEl = document.getElementById('cp-error');
-  errEl.innerText = '';
-  const newName = document.getElementById('cp-name').value.trim();
-  const currentPassword = document.getElementById('cp-current').value;
-  const newPassword = document.getElementById('cp-new').value;
-  const confirmNewPassword = document.getElementById('cp-new-confirm').value;
-
-  if (!newName && !newPassword && !confirmNewPassword) {
-    errEl.innerText = 'Enter a new name, a new password, or both.';
-    return;
-  }
-  if (!currentPassword) {
-    errEl.innerText = 'Please enter your current password.';
-    return;
-  }
-  if ((newPassword || confirmNewPassword) && newPassword !== confirmNewPassword) {
-    errEl.innerText = 'New passwords do not match.';
-    return;
-  }
-  if (newPassword && newPassword.length < 8) {
-    errEl.innerText = 'New password must be 8+ characters.';
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/change-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
-      body: JSON.stringify({ currentPassword, newPassword, newName })
-    });
-    const data = await res.json();
-    if (data.success) {
-      if (newName) localStorage.setItem('user_name', newName);
-      alert(newName && newPassword ? 'Name and password updated!' : newName ? 'Name updated!' : 'Password changed!');
-      document.getElementById('change-password-modal').classList.add('hidden');
-      document.getElementById('cp-name').value = '';
-      document.getElementById('cp-current').value = '';
-      document.getElementById('cp-new').value = '';
-      document.getElementById('cp-new-confirm').value = '';
-      renderHeader();
-    } else {
-      errEl.innerText = data.error || 'Failed to update credentials.';
-    }
-  } catch (e) {
-    errEl.innerText = 'Network error.';
   }
 }
 
@@ -592,6 +347,99 @@ async function submitPost() {
   renderCommunity();
 }
 
+async function loadAdminData() {
+  const token = localStorage.getItem('token');
+  try {
+    const [statsRes, usersRes] = await Promise.all([
+      fetch('/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + token } }),
+      fetch('/api/admin/users', { headers: { 'Authorization': 'Bearer ' + token } })
+    ]);
+    const stats = await statsRes.json();
+    const users = await usersRes.json();
+
+    document.getElementById('stat-members').innerText = stats.users || 1;
+    document.getElementById('stat-posts').innerText = stats.posts || 0;
+
+    const host = document.getElementById('admin-members-list');
+    if (Array.isArray(users) && users.length) {
+      host.innerHTML = users.map(u => `
+        <div class="member-row">
+          <div>
+            <b>${escapeHtml(u.name)} (${escapeHtml(u.member_number || '1')})</b>
+            <span class="badge ${u.is_admin ? 'badge-admin' : 'badge-member'}">${u.is_admin ? 'ADMIN' : 'MEMBER'}</span>
+            <div style="font-size:.85rem; color:var(--slate); margin-top:4px;">${escapeHtml(u.email)}</div>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="pill" style="font-size:.75rem; padding:4px 10px;" onclick="adminResetPw(${u.id})">Set Password</button>
+          </div>
+        </div>
+      `).join('');
+    }
+  } catch (err) {}
+}
+
+async function adminResetPw(userId) {
+  const newPw = prompt('Enter a new password for this member (minimum 8 characters):');
+  if (!newPw) return;
+  const token = localStorage.getItem('token');
+  const r = await fetch('/api/admin/reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+    body: JSON.stringify({ user_id: userId, new_password: newPw })
+  });
+  if (r.ok) alert('Password updated successfully.');
+  else alert('Failed to update password.');
+}
+
+async function changePassword() {
+  const errEl = document.getElementById('cp-error');
+  errEl.innerText = '';
+  const newName = document.getElementById('cp-name').value.trim();
+  const currentPassword = document.getElementById('cp-current').value;
+  const newPassword = document.getElementById('cp-new').value;
+  const confirmNewPassword = document.getElementById('cp-new-confirm').value;
+
+  if (!newName && !newPassword && !confirmNewPassword) {
+    errEl.innerText = 'Enter a new name, a new password, or both.';
+    return;
+  }
+  if (!currentPassword) {
+    errEl.innerText = 'Please enter your current password.';
+    return;
+  }
+  if ((newPassword || confirmNewPassword) && newPassword !== confirmNewPassword) {
+    errEl.innerText = 'New passwords do not match.';
+    return;
+  }
+  if (newPassword && newPassword.length < 8) {
+    errEl.innerText = 'New password must be 8+ characters.';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+      body: JSON.stringify({ currentPassword, newPassword, newName })
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (newName) localStorage.setItem('user_name', newName);
+      alert('Updated successfully!');
+      document.getElementById('change-password-modal').classList.add('hidden');
+      document.getElementById('cp-name').value = '';
+      document.getElementById('cp-current').value = '';
+      document.getElementById('cp-new').value = '';
+      document.getElementById('cp-new-confirm').value = '';
+      renderHeader();
+    } else {
+      errEl.innerText = data.error || 'Failed to update.';
+    }
+  } catch (e) {
+    errEl.innerText = 'Network error.';
+  }
+}
+
 async function login() {
   const errEl = document.getElementById('login-error');
   errEl.innerText = '';
@@ -610,21 +458,17 @@ async function login() {
       localStorage.setItem('user_name', data.name);
       localStorage.setItem('user_email', data.email);
       localStorage.setItem('user_number', data.user_number || '1');
-      localStorage.setItem('user_status', data.status || 'Approved');
-      sendHeartbeat();
-      if (data.welcomed === 0) showWelcome();
-      else showHome();
+      localStorage.setItem('user_status', data.status || 'Admin');
+      showHome();
     } else {
       errEl.innerText = data.error || 'Login failed.';
     }
   } catch (e) {
-    errEl.innerText = e.message || 'Login failed.';
+    errEl.innerText = 'Login failed. Please check credentials.';
   }
 }
 
 async function signup() {
-  const errEl = document.getElementById('signup-error');
-  errEl.innerText = '';
   const name = document.getElementById('signup-name').value.trim();
   const email = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
@@ -641,38 +485,15 @@ async function signup() {
       localStorage.setItem('user_name', data.name);
       localStorage.setItem('user_email', data.email);
       localStorage.setItem('user_number', data.user_number || '1');
-      localStorage.setItem('user_status', data.status || 'Pending');
-      sendHeartbeat();
-      showWelcome();
-    } else {
-      errEl.innerText = data.error || 'Sign-up failed.';
+      localStorage.setItem('user_status', data.status || 'Member');
+      showHome();
     }
-  } catch (e) {
-    errEl.innerText = e.message || 'Signup failed.';
-  }
+  } catch (e) {}
 }
 
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
-
-function sendHeartbeat() {
-  const token = localStorage.getItem('token');
-  if (token) {
-    fetch('/api/heartbeat', { headers: { 'Authorization': 'Bearer ' + token } }).catch(function(){});
-  }
-}
-
-sendHeartbeat();
-setInterval(sendHeartbeat, 45000);
-
-setInterval(function() {
-  const token = localStorage.getItem('token');
-  const adminView = document.getElementById('view-admin');
-  if (token && adminView && !adminView.classList.contains('hidden')) {
-    loadAdminDashboard();
-  }
-}, 45000);
 
 applySettings();
 showHome();
