@@ -5,89 +5,165 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CICT Studio — Admin</title>
-<link rel="icon" type="image/png" href="/favicon.png">
+<title id="admin-tab-title">Site Administration</title>
+<link rel="icon" type="image/png" id="admin-tab-favicon" href="">
 <style>
   :root {
-    --navy: #0B2545;
+    --primary: #0B2545;
     --accent: #D4AF37;
     --bg: #F8F9FA;
     --card: #FFFFFF;
-    --slate: #6C757D;
+    --muted: #5B6B7F;
     --red: #C62828;
+    --amber: #B7791F;
     --green: #1B7F3B;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
-  body { background: var(--bg); color: var(--navy); padding: 24px; }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif; }
+  body { background: var(--bg); color: var(--primary); padding: 24px; }
   header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--accent); padding-bottom: 14px; margin-bottom: 22px; }
-  header h1 { font-size: 1.5rem; font-weight: 800; }
+  header h1 { font-size: 1.5rem; }
   header h1 span { color: var(--accent); }
-  .pill { background: #fff; color: var(--navy); border: 2px solid var(--navy); border-radius: 999px; padding: 8px 18px; font-weight: 700; text-decoration: none; font-size: .85rem; }
-  h2 { margin: 26px 0 10px; font-size: 1.15rem; font-weight: 800; }
+  .pill { background: #fff; color: var(--primary); border: 2px solid var(--primary); border-radius: 999px; padding: 8px 18px; font-weight: 700; text-decoration: none; cursor: pointer; display: inline-flex; align-items: center; }
+  .pill:hover { background: #f0f4f8; }
+  h2 { margin: 26px 0 10px; font-size: 1.15rem; }
   .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin: 12px 0 8px; }
-  .card { background: var(--card); border-radius: 12px; padding: 18px; box-shadow: 0 4px 12px rgba(11,37,69,.06); }
-  .card b { font-size: 1.6rem; display: block; margin-bottom: 4px; color: var(--navy); }
-  .card span { color: var(--slate); font-size: .85rem; font-weight: 600; }
-  .row { background: var(--card); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; box-shadow: 0 2px 6px rgba(11,37,69,.05); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
-  .muted { color: var(--slate); font-size: .85rem; }
-  button { cursor: pointer; border: none; border-radius: 8px; padding: 7px 12px; font-weight: 700; font-size: .82rem; }
+  .card { background: var(--card); border-radius: 10px; padding: 16px; box-shadow: 0 2px 6px rgba(0, 20, 60, .08); }
+  .card b { font-size: 1.6rem; display: block; margin-bottom: 4px; color: var(--primary); }
+  .card span { color: var(--muted); font-size: .85rem; font-weight: 600; }
+  .row { background: var(--card); border-radius: 10px; padding: 8px 12px; margin-bottom: 8px; box-shadow: 0 2px 6px rgba(0, 20, 60, .08); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+  .muted { color: var(--muted); font-size: .88rem; }
+  button { cursor: pointer; border: none; border-radius: 8px; padding: 8px 14px; font-weight: 700; font-size: .85rem; }
   button[disabled] { opacity: .35; cursor: not-allowed; }
   .btn-accent { background: var(--accent); color: #fff; }
-  .btn-navy { background: var(--navy); color: #fff; }
-  .btn-ghost { background: #fff; color: var(--navy); border: 2px solid var(--navy); }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-ghost { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
   .btn-red { background: var(--red); color: #fff; }
-  .btn-mini { padding: 5px 8px; font-size: .72rem; border-radius: 6px; }
-  .badge { border-radius: 6px; padding: 2px 8px; font-size: .7rem; font-weight: 800; color: #fff; background: var(--navy); }
+  .btn-mini { padding: 5px 10px; font-size: .72rem; line-height: 1.2; border-radius: 8px; min-width: 58px; text-align: center; }
+  .badge { border-radius: 6px; padding: 2px 8px; font-size: .7rem; font-weight: 700; margin-left: 6px; color: #fff; background: var(--primary); }
   .badge.a { background: var(--accent); }
   .badge.r { background: var(--red); }
+  .badge.p { background: var(--amber); }
   .badge.g { background: var(--green); }
-  .chip { background: #eef2f7; border-radius: 6px; padding: 3px 8px; font-size: .75rem; font-weight: 700; color: var(--navy); }
+  .chip { background: #eef2f7; border-radius: 8px; padding: 3px 9px; font-size: .72rem; font-weight: 800; color: var(--primary); display: inline-block; }
   .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-  .dot.on { background: var(--green); box-shadow: 0 0 6px rgba(27,127,59,.7); }
+  .dot.on { background: var(--green); box-shadow: 0 0 6px rgba(27, 127, 59, .7); }
   .dot.off { background: #d3dce6; }
-  label.chk { display: flex; gap: 6px; align-items: center; font-size: .82rem; color: var(--slate); font-weight: 600; }
-  #login { max-width: 360px; margin: 10vh auto; background: #fff; padding: 26px; border-radius: 12px; box-shadow: 0 6px 18px rgba(11,37,69,.12); }
-  #login h1 { margin-bottom: 14px; font-size: 1.4rem; }
-  #login h1 span { color: var(--accent); }
-  input { width: 100%; padding: 10px; margin: 6px 0 12px; border: 2px solid #dfe6ee; border-radius: 8px; font-size: .95rem; }
+  label.chk { display: flex; gap: 6px; align-items: center; font-size: .82rem; color: var(--muted); font-weight: 600; cursor: pointer; }
+  #login { max-width: 380px; margin: 10vh auto; background: #fff; border-radius: 14px; box-shadow: 0 8px 24px rgba(0, 20, 60, .12); overflow: hidden; }
+  .auth-band { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); color: #fff; font-weight: 800; font-size: 1.2rem; padding: 16px 20px; }
+  .auth-body { padding: 22px; }
+  input { width: 100%; padding: 11px; margin: 6px 0 14px; border: 2px solid #dfe6ee; border-radius: 8px; font-size: .95rem; }
+  input:focus { outline: none; border-color: var(--accent); }
   .hidden { display: none !important; }
+  .post-ex { background: #f5f7fa; border-radius: 8px; padding: 8px 10px; margin: 6px 0; font-size: .85rem; color: var(--muted); max-width: 520px; }
 </style>
 </head>
 <body>
 
 <div id="login" class="hidden">
-  <h1>CICT <span>Admin</span></h1>
-  <input id="li-email" type="email" placeholder="Admin Email">
-  <input id="li-pass" type="password" placeholder="Password">
-  <button class="btn-navy" style="width:100%; padding:10px;" onclick="doLogin()">Log in</button>
-  <p id="li-err" class="muted" style="margin-top:10px; color:var(--red);"></p>
+  <div class="auth-band" id="login-band">Platform <span>Admin</span></div>
+  <div class="auth-body">
+    <input id="li-email" type="email" placeholder="Admin Email">
+    <input id="li-pass" type="password" placeholder="Password">
+    <button class="btn-primary" style="width:100%; padding:11px;" onclick="doLogin()">Log in</button>
+    <p id="li-err" class="muted" style="margin-top:10px; color:var(--red); font-weight:700;"></p>
+  </div>
 </div>
 
 <div id="dash" class="hidden">
   <header>
-    <h1>CICT <span>Studio Admin</span></h1>
-    <a class="pill" href="/">&#8592; Back to Site</a>
+    <h1><span id="admin-site-name">Platform</span> <span>Administration</span></h1>
+    <a class="pill" href="/">&#8592; Back to site</a>
   </header>
-  
-  <h2>Platform Overview</h2>
+  <h2 style="margin-top:0; font-size:1.6rem;">Admin Dashboard</h2>
   <div class="cards" id="stats"></div>
-
-  <h2 style="display:flex; justify-content:space-between; align-items:center;">
-    Classmates & Roster
-    <button id="sync-members-btn" class="btn-ghost" onclick="syncMembers()">Sync AMS Sheet</button>
+  <h2>Analytics</h2>
+  <div class="cards" id="analytics"></div>
+  <h2 style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+    Classmates — full member list
+    <button id="sync-members-btn" class="btn-ghost" style="font-size:.78rem; padding:6px 14px;" onclick="syncMembers()">Sync Members Sheet</button>
   </h2>
   <div id="members"></div>
+  <h2>Reports</h2>
+  <div id="reports"></div>
 </div>
 
 <script>
-const KEYS = ['cict_token', 'token'];
+const SETTINGS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-GuKH1NLoIOG9UoA8WV8jPd3hw8CFzu9g5NnuPnXv9ck-iJ7tbsQKVG1VKXHRLUlfs2y_QesvszsV/pub?gid=507176348&single=true&output=csv';
+const KEYS = ['token'];
 let TOKEN = '';
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+function formatDriveUrl(url) {
+  if (!url) return '';
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) return 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w1000';
+  return url;
+}
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let token = '';
+  let insideQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    const next = text[i + 1];
+    if (c === '"') {
+      if (insideQuotes && next === '"') { token += '"'; i++; }
+      else { insideQuotes = !insideQuotes; }
+    } else if (c === ',' && !insideQuotes) {
+      row.push(token); token = '';
+    } else if ((c === '\r' || c === '\n') && !insideQuotes) {
+      if (c === '\r' && next === '\n') i++;
+      row.push(token); token = '';
+      if (row.length > 0 && row.some(cell => cell.trim())) rows.push(row);
+      row = [];
+    } else {
+      token += c;
+    }
+  }
+  if (token || row.length > 0) {
+    row.push(token);
+    if (row.some(cell => cell.trim())) rows.push(row);
+  }
+  return rows;
+}
+
+async function applyAdminSettings() {
+  try {
+    const res = await fetch(SETTINGS_CSV_URL);
+    const csv = await res.text();
+    const rows = parseCSV(csv);
+    if (rows.length < 2) return;
+    const s = rows[1];
+
+    const siteName = s[0] || 'Platform';
+    const favUrl   = s[5] || '';
+    const primary  = s[8] || '#0B2545';
+    const accent   = s[9] || '#D4AF37';
+    const bg       = s[10] || '#F8F9FA';
+
+    document.getElementById('admin-site-name').innerText = siteName;
+    document.getElementById('admin-tab-title').innerText = siteName + ' — Site Administration';
+    document.getElementById('login-band').innerHTML = escapeHtml(siteName) + ' <span>Admin</span>';
+
+    if (favUrl) {
+      document.getElementById('admin-tab-favicon').href = formatDriveUrl(favUrl);
+    }
+
+    const r = document.documentElement;
+    r.style.setProperty('--primary', primary);
+    r.style.setProperty('--accent', accent);
+    r.style.setProperty('--bg', bg);
+  } catch (err) {}
+}
+
 function isOnline(ls) {
   if (!ls) return false;
-  const t = Date.parse(String(ls).replace(' ', 'T') + 'Z');
+  const iso = String(ls).replace(' ', 'T') + (String(ls).endsWith('Z') ? '' : 'Z');
+  const t = Date.parse(iso);
   return !isNaN(t) && (Date.now() - t) < 5 * 60000;
 }
 
@@ -102,14 +178,22 @@ async function api(path, opts = {}) {
 async function getJSON(path) {
   const r = await api(path);
   if (!r.ok) return null;
-  try { return await r.json(); } catch(e) { return null; }
+  try { return await r.json(); } catch (e) { return null; }
 }
 
-async function checkAdmin(t) {
+async function statsStatus(t) {
   try {
     const r = await fetch('/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + t } });
-    return r.status === 200;
-  } catch(e) { return false; }
+    return r.status;
+  } catch (e) { return 0; }
+}
+
+async function findToken() {
+  for (const k of KEYS) {
+    const v = localStorage.getItem(k);
+    if (v && await statsStatus(v) === 200) return v;
+  }
+  return '';
 }
 
 function showLogin(msg) {
@@ -125,31 +209,24 @@ function showDash() {
 }
 
 async function boot() {
-  for (const k of KEYS) {
-    const v = localStorage.getItem(k);
-    if (v && await checkAdmin(v)) {
-      TOKEN = v;
-      showDash();
-      return;
-    }
-  }
+  await applyAdminSettings();
+  TOKEN = await findToken();
+  if (TOKEN) { showDash(); return; }
   showLogin('');
 }
 
 async function doLogin() {
-  const email = $('li-email').value.trim();
-  const password = $('li-pass').value;
   const r = await fetch('/api/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify({ email: $('li-email').value, password: $('li-pass').value })
   });
   const j = await r.json();
   if (!r.ok) { showLogin(j.error || 'Login failed.'); return; }
   TOKEN = j.token;
-  KEYS.forEach(k => localStorage.setItem(k, j.token));
-  if (await checkAdmin(TOKEN)) { showDash(); return; }
-  showLogin('Logged in, but this account is not marked as Admin.');
+  localStorage.setItem('token', j.token);
+  if (await statsStatus(TOKEN) === 200) { showDash(); return; }
+  showLogin('Login worked, but this account does not have admin permissions.');
 }
 
 async function act(path, body) {
@@ -161,73 +238,94 @@ async function act(path, body) {
   loadAll();
 }
 
+function setStatus(id, status) { act('/api/admin/status', { user_id: id, status }); }
+
 async function syncMembers() {
   const btn = $('sync-members-btn');
-  btn.disabled = true;
-  btn.textContent = 'Syncing...';
+  if (btn) { btn.disabled = true; btn.textContent = 'Syncing…'; }
   try {
     const r = await api('/api/admin/sync-members', { method: 'POST' });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) alert(j.error || 'Sync failed.');
-    else alert('Sheet synchronized successfully.');
-  } catch(e) {
-    alert('Sync error: ' + e.message);
-  }
-  btn.disabled = false;
-  btn.textContent = 'Sync AMS Sheet';
+    else alert('Sheet updated: ' + (j.count != null ? j.count + ' member rows synced.' : 'done'));
+  } catch (e) { alert('Sync failed: ' + e.message); }
+  if (btn) { btn.disabled = false; btn.textContent = 'Sync Members Sheet'; }
   loadAll();
 }
 
 async function loadAll() {
-  const [stats, users] = await Promise.all([
+  const [stats, analytics, users, reports] = await Promise.all([
     getJSON('/api/admin/stats'),
-    getJSON('/api/admin/users')
+    getJSON('/api/admin/analytics'),
+    getJSON('/api/admin/users'),
+    getJSON('/api/admin/reports')
   ]);
 
   $('stats').innerHTML = stats ? `
-    <div class="card"><b>${stats.users || 0}</b><span>Total Members</span></div>
-    <div class="card"><b>${stats.active || 0}</b><span>Active (Last 5m)</span></div>
-    <div class="card"><b>${stats.posts || 0}</b><span>Discussion Posts</span></div>
-  ` : '<p class="muted">Stats unavailable.</p>';
+    <div class="card"><b>${stats.users || 0}</b><span>Members</span></div>
+    <div class="card"><b>${stats.posts || 0}</b><span>Posts</span></div>
+    <div class="card"><b>${stats.reports || 0}</b><span>Open reports</span></div>
+    <div class="card"><b>${stats.active || 0}</b><span>Active users (last 5 min)</span></div>`
+    : '<p class="muted">Stats unavailable.</p>';
+
+  $('analytics').innerHTML = analytics ? `
+    <div class="card"><b>${analytics.totalUsers || 0}</b><span>Total users</span></div>
+    <div class="card"><b>${analytics.activeLearners || 0}</b><span>Active learners</span></div>
+    <div class="card"><b>${analytics.eliteRate || 0}%</b><span>Completion rate (1+ lesson)</span></div>
+    <div class="card"><b>${analytics.engagement || 0}</b><span>Engagement</span></div>
+    <div class="card"><b>${analytics.healthRatio || 0}</b><span>Health ratio</span></div>` : '';
 
   $('members').innerHTML = (Array.isArray(users) && users.length) ? users.map(u => {
-    const badgeClass = u.status === 'Approved' ? 'g' : (u.status === 'Banned' ? 'r' : 'a');
+    const sb = u.status === 'Approved' ? 'g' : (u.status === 'Banned' ? 'r' : 'p');
     const on = isOnline(u.last_seen);
+    const isPaid = u.is_paid === 1;
+
     return `
       <div class="row">
-        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
-          <b>#${esc(u.member_number)} ${esc(u.name)}</b>
-          <span class="dot ${on ? 'on' : 'off'}" title="${on ? 'Online now' : 'Last seen ' + (u.last_seen || 'never')}"></span>
-          <span class="badge ${badgeClass}">${esc(u.status || 'Active').toUpperCase()}</span>
+        <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+          <b>#${esc(u.member_number || '')} ${esc(u.name)}</b>
+          <span class="dot ${on ? 'on' : 'off'}" title="${on ? 'On site now' : 'Last seen ' + (u.last_seen || 'never')}"></span>
+          <span class="badge ${sb}">${esc(u.status || 'Pending').toUpperCase()}</span>
           ${u.is_admin ? '<span class="badge a">ADMIN</span>' : ''}
-          <span class="chip">Answers ${u.answers_done || 0}</span>
-          <span class="muted">${esc(u.email)}</span>
+          <span class="chip">Posts ${u.post_count || 0}</span>
+          <span class="chip">Modules ${u.modules_done || 0}</span>
+          <span class="chip">Lessons ${u.lessons_done || 0}</span>
+          <span class="muted">${esc(u.email)} &middot; joined ${esc((u.created_at || '').slice(0, 10))}</span>
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
-          <button class="btn-ghost btn-mini" onclick="resetPw(${u.id})">Set Password</button>
-          <button class="btn-accent btn-mini" onclick="sendResetEmail('${esc(u.email)}')">Email Reset Link</button>
-          <label class="chk" style="margin-left:4px;">
-            <input type="checkbox" ${u.is_admin ? 'checked' : ''} onchange="act('/api/admin/set-admin', { user_id: ${u.id}, is_admin: this.checked ? 1 : 0 })"> Admin
-          </label>
+          <button class="${isPaid ? 'btn-primary' : 'btn-ghost'} btn-mini" onclick="act('/api/admin/set-paid', { user_id: ${u.id}, is_paid: ${isPaid ? 0 : 1} })">${isPaid ? 'Paid' : 'Free'}</button>
+          <button class="btn-primary btn-mini" ${u.status === 'Approved' ? 'disabled' : ''} onclick="setStatus(${u.id}, 'Approved')">Approve</button>
+          <button class="btn-ghost btn-mini" ${u.status === 'Pending' ? 'disabled' : ''} onclick="setStatus(${u.id}, 'Pending')">Pending</button>
+          <button class="btn-red btn-mini" ${u.status === 'Banned' ? 'disabled' : ''} onclick="setStatus(${u.id}, 'Banned')">Banned</button>
+          <label class="chk"><input type="checkbox" ${u.is_admin ? 'checked' : ''} onchange="act('/api/admin/set-admin', { user_id: ${u.id}, is_admin: this.checked ? 1 : 0 })"> Admin</label>
+          <button class="btn-ghost btn-mini" onclick="resetPw(${u.id})">Reset PW</button>
         </div>
       </div>
     `;
-  }).join('') : '<p class="muted">No members registered yet.</p>';
+  }).join('') : '<p class="muted">No members enrolled.</p>';
+
+  $('reports').innerHTML = Array.isArray(reports) ? (reports.length ? reports.map(r => `
+    <div class="row" style="display:block;">
+      <div class="muted">${esc(r.reporter_name || '?')} reported ${esc(r.reported_user_name || '?')} &middot; ${esc((r.created_at || '').slice(0, 10))} ${r.resolved ? '<span class="badge">RESOLVED</span>' : ''}</div>
+      <div class="post-ex">${esc(r.post_content || '(post deleted)')}</div>
+      <div class="muted" style="margin-bottom:8px;">Reason: ${esc(r.reason || '—')}</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn-primary" onclick="act('/api/admin/reports/resolve', { report_id: ${r.id}, resolved: ${r.resolved ? 0 : 1} })">${r.resolved ? 'Reopen' : 'Resolve'}</button>
+        ${r.post_id ? `<button class="btn-red" onclick="act('/api/posts/delete', { post_id: ${r.post_id} })">Delete post</button>` : ''}
+        <button class="btn-ghost" onclick="act('/api/admin/reports/delete', { report_id: ${r.id} })">Delete report</button>
+      </div>
+    </div>
+  `).join('') : '<p class="muted">No reports. 🎉</p>') : '<p class="muted">Reports unavailable.</p>';
 }
 
 async function resetPw(id) {
-  const pw = prompt('Enter a new password for this member (minimum 8 characters):');
+  const pw = prompt('New password for this member (8+ characters):');
   if (!pw) return;
   act('/api/admin/reset-password', { user_id: id, new_password: pw });
 }
 
-async function sendResetEmail(email) {
-  if (!confirm('Send a password reset email to ' + email + '?')) return;
-  const r = await api('/api/forgot-password', { method: 'POST', body: { email } });
-  if (r.ok) alert('Reset email dispatched.');
-  else alert('Failed to send reset email.');
-}
-
+setInterval(() => { if (TOKEN) api('/api/heartbeat').catch(() => {}); }, 60000);
+setInterval(() => { if (TOKEN && !$('dash').classList.contains('hidden')) loadAll(); }, 60000);
 boot();
 </script>
 </body>
