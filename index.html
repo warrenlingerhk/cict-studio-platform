@@ -5,7 +5,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title id="tab-title">CICT Studio</title>
+  <title id="tab-title">Platform</title>
   <link rel="icon" type="image/png" id="tab-favicon" href="">
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -14,66 +14,53 @@
       --primary: #0B2545;
       --accent: #D4AF37;
       --bg: #F8F9FA;
-      --navy: #0B2545;
       --slate: #6C757D;
       --lightBlue: #E9ECEF;
       --red: #C62828;
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body { background: var(--bg); color: var(--navy); font-family: 'Nunito Sans', sans-serif; margin: 0; font-size: 16px; }
+    body { background: var(--bg); color: var(--primary); font-family: 'Nunito Sans', sans-serif; margin: 0; font-size: 16px; }
     h1, h2, h3, .brand { font-family: 'Poppins', sans-serif; }
     .hidden { display: none !important; }
     .wrap { width: min(1150px, 94%); margin-inline: auto; }
     .site-head { position: sticky; top: 0; z-index: 50; background: var(--bg); }
-    .head-in { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 3px solid var(--navy); }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.25rem; color: var(--navy); text-decoration: none; }
+    .head-in { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 3px solid var(--primary); }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.25rem; color: var(--primary); text-decoration: none; }
     .brand-logo { width: 44px; height: 44px; object-fit: contain; }
     .btn { border-radius: 999px; font-weight: 800; cursor: pointer; transition: transform .15s; font-family: 'Nunito Sans'; border: none; }
     .btn:hover { transform: translateY(-2px); }
     .btn.small { padding: 6px 16px; font-size: .85rem; }
-    .btn.ghost { background: #fff; border: 2px solid var(--navy); color: var(--navy); }
-    .btn.cta { background: var(--accent); color: #fff; box-shadow: 0 4px 0 rgba(11,37,69,.2); }
-    .pill { background: #fff; color: var(--navy); border: 2px solid var(--navy); border-radius: 999px; padding: 6px 16px; font-size: .85rem; font-weight: 800; text-decoration: none; cursor: pointer; display: inline-flex; align-items: center; }
-    .pill:hover { background: #f0f4f8; }
+    .btn.ghost { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+    .btn.cta { background: var(--accent); color: #fff; box-shadow: 0 4px 0 rgba(0,0,0,.15); }
+    .name-chip { background: #fff; border: 2px solid var(--primary); border-radius: 999px; padding: 6px 16px; font-size: .85rem; font-weight: 800; cursor: pointer; transition: background .2s; }
+    .name-chip:hover { background: var(--lightBlue); }
     .layout { display: grid; grid-template-columns: 1.2fr .8fr; gap: 28px; padding: 26px 0 70px; align-items: start; }
-    .card { background: #fff; border-radius: 18px; box-shadow: 0 8px 24px rgba(11, 37, 69, .08); }
+    .card { background: #fff; border-radius: 18px; box-shadow: 0 8px 24px rgba(0,0,0,.08); }
     .hero { overflow: hidden; display: grid; grid-template-columns: 1.2fr .8fr; }
     .hero-media { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); width: 100%; min-height: 240px; }
     .hero-copy { padding: 34px 30px 28px; }
-    .hero h1 { font-size: clamp(1.5rem, 3.8vw, 2.3rem); font-weight: 800; line-height: 1.2; margin: 0; color: var(--navy); }
+    .hero h1 { font-size: clamp(1.5rem, 3.8vw, 2.3rem); font-weight: 800; line-height: 1.2; margin: 0; color: var(--primary); }
     .hero-bullets { list-style: none; padding: 0; margin: 16px 0 0; }
     .hero-bullets li { font-size: 1.05rem; font-weight: 700; color: var(--slate); margin-bottom: 8px; padding-left: 22px; position: relative; }
     .hero-bullets li::before { content: '•'; color: var(--accent); font-weight: 800; position: absolute; left: 0; }
     .rail-title { font-size: 1.25rem; font-weight: 800; margin: 6px 0 14px; text-align: center; }
     .course-list { display: flex; flex-direction: column; gap: 14px; }
-    .course { border-radius: 16px; padding: 18px 20px; box-shadow: 0 6px 0 rgba(11, 37, 69, .18); color: #fff; }
+    .course { border-radius: 16px; padding: 18px 20px; box-shadow: 0 6px 0 rgba(0,0,0,.15); color: #fff; }
     .course h3 { margin: 0; font-size: 1.2rem; font-weight: 800; }
-    .course-btn { width: 100%; padding: 10px; border-radius: 999px; border: none; background: var(--navy); color: #fff; font-weight: 800; cursor: pointer; font-size: 1rem; margin: 10px 0; }
+    .course-btn { width: 100%; padding: 10px; border-radius: 999px; border: none; background: var(--primary); color: #fff; font-weight: 800; cursor: pointer; font-size: 1rem; margin: 10px 0; }
     .community { padding: 26px 28px; margin-top: 28px; }
     .community h2 { font-size: 1.5rem; margin: 0 0 6px; }
     .community-sub { color: var(--slate); font-weight: 700; margin: 0 0 16px; }
     #post-input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 2px solid var(--slate); font: inherit; font-size: 1rem; min-height: 80px; }
-    .post { background: #f8f9fa; border-radius: 12px; padding: 16px 18px; margin-top: 16px; }
+    .post { background: #fff; border-radius: 12px; padding: 16px 18px; margin-top: 16px; border: 1px solid var(--lightBlue); }
     .post-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
     .post-name { font-weight: 800; }
     .post-date { font-size: .8rem; color: var(--slate); font-weight: 700; }
-    .admin-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 16px 0 24px; }
-    .admin-stat { background: #fff; border: 2px solid var(--lightBlue); border-radius: 12px; padding: 18px; }
-    .admin-stat b { font-size: 1.8rem; display: block; color: var(--navy); }
-    .admin-stat span { color: var(--slate); font-size: .85rem; font-weight: 700; }
-    .member-row { background: #fff; border: 1px solid var(--lightBlue); border-radius: 10px; padding: 12px 16px; margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
-    .badge { border-radius: 6px; padding: 3px 8px; font-size: .72rem; font-weight: 800; color: #fff; }
-    .badge-admin { background: var(--accent); }
-    .badge-member { background: var(--navy); }
-    .modal-overlay { position: fixed; inset: 0; background: rgba(11, 37, 69, .6); z-index: 100; display: grid; place-items: center; padding: 20px; }
-    .modal-box { background: #fff; border-radius: 18px; padding: 30px; max-width: 440px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
-    .modal-box h3 { margin: 0 0 14px; font-size: 1.35rem; font-weight: 800; }
-    .modal-box input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 2px solid var(--slate); margin-bottom: 10px; font-size: .95rem; }
 
-    /* Model Auth Card Styling */
+    /* Dynamic Theme Auth Card */
     .auth-wrap { min-height: 80vh; display: grid; place-items: center; padding: 50px 0; }
-    .auth-card { width: min(440px, 94%); overflow: hidden; border-radius: 18px; background: #fff; box-shadow: 0 8px 24px rgba(11,37,69,.12); }
+    .auth-card { width: min(440px, 94%); overflow: hidden; border-radius: 18px; background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.12); }
     .auth-band { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); padding: 18px 26px; font-weight: 800; font-size: 1.25rem; color: #fff; font-family: 'Poppins', sans-serif; }
     .auth-body { padding: 24px 26px; }
     .auth-body input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 2px solid var(--slate); font: inherit; margin: 6px 0 14px; font-size: 1rem; outline: none; }
@@ -82,6 +69,11 @@
     .auth-link { color: var(--accent); font-weight: 800; text-decoration: none; }
     .auth-link:hover { text-decoration: underline; }
     .form-error { color: var(--red); font-weight: 800; font-size: 0.95rem; margin-top: 8px; text-align: center; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; display: grid; place-items: center; padding: 20px; }
+    .modal-box { background: #fff; border-radius: 18px; padding: 30px; max-width: 440px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+    .modal-box h3 { margin: 0 0 14px; font-size: 1.35rem; font-weight: 800; }
+    .modal-box input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 2px solid var(--slate); margin-bottom: 10px; font-size: .95rem; }
 
     @media(max-width: 900px) { .layout, .hero { grid-template-columns: 1fr; } }
   </style>
@@ -92,7 +84,7 @@
   <div class="head-in wrap">
     <a class="brand" href="#" onclick="showHome(); return false;">
       <img id="site-logo" class="brand-logo hidden" src="" alt="Logo">
-      <span id="site-name">CICT Studio</span>
+      <span id="site-name">Loading...</span>
     </a>
     <div class="head-actions" id="head-actions"></div>
   </div>
@@ -127,34 +119,18 @@
   </div>
 </div>
 
-<div id="view-admin" class="hidden wrap" style="padding: 30px 0;">
-  <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid var(--accent); padding-bottom:14px; margin-bottom:20px;">
-    <h1 style="font-size:1.6rem; font-weight:800; margin:0;">Platform Administration</h1>
-    <button class="pill" onclick="showHome()">&larr; Back to Site</button>
-  </div>
-
-  <h2>Overview</h2>
-  <div class="admin-cards">
-    <div class="admin-stat"><b id="stat-members">1</b><span>Enrolled Members</span></div>
-    <div class="admin-stat"><b id="stat-posts">0</b><span>Discussion Posts</span></div>
-  </div>
-
-  <h2>Members Roster</h2>
-  <div id="admin-members-list"></div>
-</div>
-
 <!-- Sign Up View -->
 <div id="view-auth-signup" class="hidden">
   <div class="auth-wrap">
     <div class="auth-card">
-      <div class="auth-band">Join Class</div>
+      <div class="auth-band" id="signup-band">Join Platform</div>
       <div class="auth-body">
-        <input type="text" id="signup-name" placeholder="Full Name">
-        <input type="email" id="signup-email" placeholder="Email">
-        <input type="password" id="signup-password" placeholder="Password (8+ chars)">
+        <input type="text" id="signup-name" placeholder="Full Name" required>
+        <input type="email" id="signup-email" placeholder="Email" required>
+        <input type="password" id="signup-password" placeholder="Password (8+ chars)" required>
         <button class="btn cta" onclick="signup()">Create Account</button>
-        <p style="margin: 14px 0 0; text-align: center; font-size: .95rem; color: var(--navy);">
-          Already have an account? <a href="#" class="auth-link" onclick="showAuth('login'); return false;">Log In</a>
+        <p style="margin: 14px 0 0; text-align: center; font-size: .95rem; color: var(--primary);">
+          Already have an account? <a href="#" class="auth-link" onclick="showAuth('login'); return false;">Log in</a>
         </p>
         <p class="form-error" id="signup-error"></p>
       </div>
@@ -168,10 +144,10 @@
     <div class="auth-card">
       <div class="auth-band">Welcome Back</div>
       <div class="auth-body">
-        <input type="email" id="login-email" placeholder="Email">
-        <input type="password" id="login-password" placeholder="Password">
+        <input type="email" id="login-email" placeholder="Email" required>
+        <input type="password" id="login-password" placeholder="Password" required>
         <button class="btn cta" onclick="login()">Log In</button>
-        <p style="margin: 14px 0 0; text-align: center; font-size: .95rem; color: var(--navy);">
+        <p style="margin: 14px 0 0; text-align: center; font-size: .95rem; color: var(--primary);">
           New here? <a href="#" class="auth-link" onclick="showAuth('signup'); return false;">Create an account</a> &middot; <a href="#" class="auth-link" onclick="showAuth('forgot'); return false;">Forgot your password?</a>
         </p>
         <p class="form-error" id="login-error"></p>
@@ -186,35 +162,36 @@
     <div class="auth-card">
       <div class="auth-band">Reset Password</div>
       <div class="auth-body">
-        <p style="color: var(--slate); font-weight: 600; margin-bottom: 12px;">Enter your email and we will send you a reset link.</p>
-        <input type="email" id="forgot-email" placeholder="Email">
-        <button class="btn cta" onclick="requestReset()">Send Reset Link</button>
-        <p style="margin: 14px 0 0; text-align: center; font-size: .95rem; color: var(--navy);">
-          Remembered it? <a href="#" class="auth-link" onclick="showAuth('login'); return false;">Back to Log In</a>
+        <p style="color: var(--slate); font-weight: 600; margin-bottom: 12px;">Enter your email to receive a password reset link.</p>
+        <input type="email" id="forgot-email" placeholder="Email" required>
+        <button class="btn cta" onclick="requestReset()">Send Link</button>
+        <p style="margin: 14px 0 0; text-align: center; font-size: .95rem; color: var(--primary);">
+          Remembered it? <a href="#" class="auth-link" onclick="showAuth('login'); return false;">Back to Log in</a>
         </p>
-        <p class="form-error" id="forgot-error" style="color: var(--navy);"></p>
+        <p class="form-error" id="forgot-error" style="color: var(--primary);"></p>
       </div>
     </div>
   </div>
 </div>
 
+<!-- Change Name or Password Modal -->
 <div id="change-password-modal" class="modal-overlay hidden" onclick="if(event.target===this)this.classList.add('hidden')">
   <div class="modal-box" style="text-align: left;">
-    <h3 style="color: var(--navy);">Change Name or Password</h3>
+    <h3 style="color: var(--primary);">Change Name or Password</h3>
     <input type="password" id="cp-current" placeholder="Current Password">
     <input type="text" id="cp-name" placeholder="New display name (leave blank to keep current)">
     <input type="password" id="cp-new" placeholder="New Password (8+ characters)">
     <input type="password" id="cp-new-confirm" placeholder="Confirm New Password">
-    <p id="cp-error" style="color: var(--red); text-align: center; font-weight: 700; font-size: .9rem;"></p>
+    <p id="cp-error" class="form-error"></p>
     <div style="display:flex; gap:10px; justify-content:center; margin-top:16px;">
-      <button class="pill" onclick="document.getElementById('change-password-modal').classList.add('hidden')">Cancel</button>
+      <button class="btn ghost small" onclick="document.getElementById('change-password-modal').classList.add('hidden')">Cancel</button>
       <button class="btn cta small" onclick="changePassword()">Update</button>
     </div>
   </div>
 </div>
 
-<footer style="background: var(--navy); color: #fff; padding: 30px 0; margin-top: 60px; text-align: center; font-size: .9rem;">
-  <div class="wrap"><p id="footer-text">&copy; 2026 CICT Studio. All rights reserved.</p></div>
+<footer style="background: var(--primary); color: #fff; padding: 30px 0; margin-top: 60px; text-align: center; font-size: .9rem;">
+  <div class="wrap"><p id="footer-text">&copy; 2026 Platform. All rights reserved.</p></div>
 </footer>
 
 <script>
@@ -222,6 +199,15 @@ const CMS_LESSONS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRayZvz
 const SETTINGS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-GuKH1NLoIOG9UoA8WV8jPd3hw8CFzu9g5NnuPnXv9ck-iJ7tbsQKVG1VKXHRLUlfs2y_QesvszsV/pub?gid=507176348&single=true&output=csv';
 
 let LESSONS = [];
+
+function formatDriveUrl(url) {
+  if (!url) return '';
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    return 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w1000';
+  }
+  return url;
+}
 
 function parseCSV(text) {
   const rows = [];
@@ -259,24 +245,49 @@ async function applySettings() {
     const rows = parseCSV(csv);
     if (rows.length < 2) return;
     const s = rows[1];
-    const siteName   = s[0] || 'CICT Studio';
+
+    const siteName   = s[0] || 'Platform';
+    const logoUrl    = s[4] || '';
+    const favUrl     = s[5] || '';
     const heroTitle  = s[6] || 'Your Legacy, Scaled by Design.';
     const heroPoints = s[7] || '';
+    const primary    = s[8] || '#0B2545';
+    const accent     = s[9] || '#D4AF37';
+    const bg         = s[10] || '#F8F9FA';
+
     document.getElementById('site-name').innerText = siteName;
     document.getElementById('tab-title').innerText = siteName;
     document.getElementById('footer-text').innerHTML = `&copy; 2026 ${escapeHtml(siteName)}. All rights reserved.`;
+    document.getElementById('signup-band').innerText = 'Join ' + siteName;
+
+    if (logoUrl) {
+      const logoEl = document.getElementById('site-logo');
+      logoEl.src = formatDriveUrl(logoUrl);
+      logoEl.classList.remove('hidden');
+    }
+    if (favUrl) {
+      document.getElementById('tab-favicon').href = formatDriveUrl(favUrl);
+    }
     document.getElementById('hero-title').innerText = heroTitle;
+
     const bulletEl = document.getElementById('hero-bullets');
     if (heroPoints) {
       const cleaned = heroPoints.replace(/[\r\n]+/g, ' ');
       const bullets = cleaned.split('|').map(p => p.trim()).filter(Boolean);
       bulletEl.innerHTML = bullets.map(b => `<li>${escapeHtml(b)}</li>`).join('');
     }
-  } catch (err) {}
+
+    const r = document.documentElement;
+    r.style.setProperty('--primary', primary);
+    r.style.setProperty('--accent', accent);
+    r.style.setProperty('--bg', bg);
+  } catch (err) {
+    console.error('Failed to load settings:', err);
+  }
 }
 
 function hideViews() {
-  ['view-home', 'view-admin', 'view-auth-signup', 'view-auth-login', 'view-auth-forgot'].forEach(id => {
+  ['view-home', 'view-auth-signup', 'view-auth-login', 'view-auth-forgot'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add('hidden');
   });
@@ -288,12 +299,6 @@ function showHome() {
   renderHeader();
   renderLessons();
   renderCommunity();
-}
-
-function showAdmin() {
-  hideViews();
-  document.getElementById('view-admin').classList.remove('hidden');
-  loadAdminData();
 }
 
 function showAuth(type) {
@@ -311,19 +316,17 @@ function logout() {
 function renderHeader() {
   const host = document.getElementById('head-actions');
   const token = localStorage.getItem('token');
-  const email = (localStorage.getItem('user_email') || '').toLowerCase();
-  const name = localStorage.getItem('user_name') || 'DrWarren';
-  const num = localStorage.getItem('user_number') || '1';
-  const status = (localStorage.getItem('user_status') || '').toLowerCase();
-  const isAdmin = status === 'admin' || num === '1' || email === 'drwarren@cict.co';
+  const name = localStorage.getItem('user_name') || 'Member';
+  const num = localStorage.getItem('member_number') || '1';
+  const isAdmin = localStorage.getItem('is_admin') === '1' || num === '1';
 
   if (token) {
-    const adminPill = isAdmin ? `<button class="pill" onclick="showAdmin()">Admin</button>` : '';
+    const adminLink = isAdmin ? `<a href="/admin.html" class="btn small ghost" style="text-decoration:none;">Admin</a>` : '';
     host.innerHTML = `
       <div style="display:flex; align-items:center; gap:8px;">
-        ${adminPill}
-        <button class="pill" onclick="document.getElementById('change-password-modal').classList.remove('hidden')">${escapeHtml(name)} ${escapeHtml(num)}</button>
-        <button class="pill" onclick="logout()">Log out</button>
+        ${adminLink}
+        <span class="name-chip" onclick="document.getElementById('change-password-modal').classList.remove('hidden')">${escapeHtml(name)} ${escapeHtml(num)}</span>
+        <button class="btn small ghost" onclick="logout()">Log out</button>
       </div>
     `;
   } else {
@@ -395,48 +398,66 @@ async function submitPost() {
   renderCommunity();
 }
 
-async function loadAdminData() {
-  const token = localStorage.getItem('token');
+async function login() {
+  const errEl = document.getElementById('login-error');
+  errEl.innerText = '';
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+
   try {
-    const [statsRes, usersRes] = await Promise.all([
-      fetch('/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + token } }),
-      fetch('/api/admin/users', { headers: { 'Authorization': 'Bearer ' + token } })
-    ]);
-    const stats = await statsRes.json();
-    const users = await usersRes.json();
-
-    document.getElementById('stat-members').innerText = stats.users || 1;
-    document.getElementById('stat-posts').innerText = stats.posts || 0;
-
-    const host = document.getElementById('admin-members-list');
-    if (Array.isArray(users) && users.length) {
-      host.innerHTML = users.map(u => `
-        <div class="member-row">
-          <div>
-            <b>${escapeHtml(u.name)} (${escapeHtml(u.member_number || '1')})</b>
-            <span class="badge ${u.is_admin ? 'badge-admin' : 'badge-member'}">${u.is_admin ? 'ADMIN' : 'MEMBER'}</span>
-            <div style="font-size:.85rem; color:var(--slate); margin-top:4px;">${escapeHtml(u.email)}</div>
-          </div>
-          <div style="display:flex; gap:6px;">
-            <button class="pill" style="font-size:.75rem; padding:4px 10px;" onclick="adminResetPw(${u.id})">Set Password</button>
-          </div>
-        </div>
-      `).join('');
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await r.json();
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user_name', data.name);
+      localStorage.setItem('user_email', data.email);
+      localStorage.setItem('member_number', data.member_number || '1');
+      localStorage.setItem('is_admin', data.is_admin ? '1' : '0');
+      showHome();
+    } else {
+      errEl.innerText = data.error || 'Login failed.';
     }
-  } catch (err) {}
+  } catch (e) {
+    errEl.innerText = 'Login connection error.';
+  }
 }
 
-async function adminResetPw(userId) {
-  const newPw = prompt('Enter a new password for this member (minimum 8 characters):');
-  if (!newPw) return;
-  const token = localStorage.getItem('token');
-  const r = await fetch('/api/admin/reset-password', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-    body: JSON.stringify({ user_id: userId, new_password: newPw })
-  });
-  if (r.ok) alert('Password updated successfully.');
-  else alert('Failed to update password.');
+async function signup() {
+  const errEl = document.getElementById('signup-error');
+  errEl.innerText = '';
+  const name = document.getElementById('signup-name').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value;
+
+  if (!name || !email || !password) {
+    errEl.innerText = 'Please fill out all fields.';
+    return;
+  }
+
+  try {
+    const r = await fetch('/api/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password })
+    });
+    const data = await r.json();
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user_name', data.name);
+      localStorage.setItem('user_email', data.email);
+      localStorage.setItem('member_number', data.member_number || '1');
+      localStorage.setItem('is_admin', data.is_admin ? '1' : '0');
+      showHome();
+    } else {
+      errEl.innerText = data.error || 'Sign-up failed.';
+    }
+  } catch (e) {
+    errEl.innerText = 'Sign-up error.';
+  }
 }
 
 async function changePassword() {
@@ -488,78 +509,26 @@ async function changePassword() {
   }
 }
 
-async function login() {
-  const errEl = document.getElementById('login-error');
-  errEl.innerText = '';
-  const email = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
-
-  try {
-    const r = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await r.json();
-    if (data.token) {
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user_name', data.name);
-      localStorage.setItem('user_email', data.email);
-      localStorage.setItem('user_number', data.user_number || '1');
-      localStorage.setItem('user_status', data.status || 'Admin');
-      showHome();
-    } else {
-      errEl.innerText = data.error || 'Login failed.';
-    }
-  } catch (e) {
-    errEl.innerText = 'Login failed. Please check credentials.';
-  }
-}
-
-async function signup() {
-  const errEl = document.getElementById('signup-error');
-  errEl.innerText = '';
-  const name = document.getElementById('signup-name').value.trim();
-  const email = document.getElementById('signup-email').value.trim();
-  const password = document.getElementById('signup-password').value;
-
-  if (!name || !email || !password) {
-    errEl.innerText = 'Please fill out all fields.';
-    return;
-  }
-
-  try {
-    const r = await fetch('/api/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password })
-    });
-    const data = await r.json();
-    if (data.token) {
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user_name', data.name);
-      localStorage.setItem('user_email', data.email);
-      localStorage.setItem('user_number', data.user_number || '1');
-      localStorage.setItem('user_status', data.status || 'Member');
-      showHome();
-    } else {
-      errEl.innerText = data.error || 'Sign-up failed.';
-    }
-  } catch (e) {
-    errEl.innerText = 'Sign-up error.';
-  }
-}
-
 async function requestReset() {
   const statusEl = document.getElementById('forgot-error');
   const email = document.getElementById('forgot-email').value.trim();
   if (!email) { statusEl.innerText = 'Please enter your email.'; return; }
+  await fetch('/api/forgot-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  });
   statusEl.innerText = 'If registered, a reset link will be sent.';
 }
 
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+
+setInterval(() => {
+  const token = localStorage.getItem('token');
+  if (token) fetch('/api/heartbeat', { headers: { 'Authorization': 'Bearer ' + token } }).catch(() => {});
+}, 60000);
 
 applySettings();
 showHome();
