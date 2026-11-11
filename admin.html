@@ -6,7 +6,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title id="admin-tab-title">Site Administration</title>
-<link rel="icon" type="image/png" id="admin-tab-favicon" href="">
+<link rel="icon" type="image/png" id="admin-tab-favicon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%230B2545'/></svg>">
 <style>
   :root {
     --primary: #0B2545;
@@ -131,6 +131,19 @@ function parseCSV(text) {
   return rows;
 }
 
+function setFavicon(url) {
+  if (!url) return;
+  const existing = document.getElementById('admin-tab-favicon');
+  if (existing) existing.remove();
+
+  const link = document.createElement('link');
+  link.id = 'admin-tab-favicon';
+  link.rel = 'icon';
+  link.type = 'image/png';
+  link.href = url;
+  document.head.appendChild(link);
+}
+
 async function applyAdminSettings() {
   try {
     const res = await fetch(SETTINGS_CSV_URL);
@@ -150,7 +163,7 @@ async function applyAdminSettings() {
     document.getElementById('login-band').innerHTML = escapeHtml(siteName) + ' <span>Admin</span>';
 
     if (favUrl) {
-      document.getElementById('admin-tab-favicon').href = formatDriveUrl(favUrl);
+      setFavicon(formatDriveUrl(favUrl));
     }
 
     const r = document.documentElement;
