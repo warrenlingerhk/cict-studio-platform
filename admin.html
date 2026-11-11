@@ -6,7 +6,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title id="admin-tab-title">Site Administration</title>
-<link rel="icon" type="image/png" id="admin-tab-favicon" href="">
+<link rel="shortcut icon" id="admin-tab-favicon" href="">
 <style>
   :root {
     --primary: #0B2545;
@@ -131,6 +131,17 @@ function parseCSV(text) {
   return rows;
 }
 
+function setFavicon(url) {
+  if (!url) return;
+  document.querySelectorAll("link[rel*='icon']").forEach(el => el.remove());
+  const link = document.createElement('link');
+  link.id = 'admin-tab-favicon';
+  link.rel = 'shortcut icon';
+  link.type = 'image/png';
+  link.href = url;
+  document.head.appendChild(link);
+}
+
 async function applyAdminSettings() {
   try {
     const res = await fetch(SETTINGS_CSV_URL);
@@ -150,7 +161,7 @@ async function applyAdminSettings() {
     document.getElementById('login-band').innerHTML = esc(siteName) + ' <span>Admin</span>';
 
     if (favUrl) {
-      document.getElementById('admin-tab-favicon').href = formatDriveUrl(favUrl);
+      setFavicon(formatDriveUrl(favUrl));
     }
 
     const r = document.documentElement;
