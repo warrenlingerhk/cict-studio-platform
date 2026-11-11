@@ -131,19 +131,6 @@ function parseCSV(text) {
   return rows;
 }
 
-function setFavicon(url) {
-  if (!url) return;
-  const existing = document.getElementById('admin-tab-favicon');
-  if (existing) existing.remove();
-
-  const link = document.createElement('link');
-  link.id = 'admin-tab-favicon';
-  link.rel = 'icon';
-  link.type = 'image/png';
-  link.href = url;
-  document.head.appendChild(link);
-}
-
 async function applyAdminSettings() {
   try {
     const res = await fetch(SETTINGS_CSV_URL);
@@ -160,10 +147,10 @@ async function applyAdminSettings() {
 
     document.getElementById('admin-site-name').innerText = siteName;
     document.getElementById('admin-tab-title').innerText = siteName + ' — Site Administration';
-    document.getElementById('login-band').innerHTML = escapeHtml(siteName) + ' <span>Admin</span>';
+    document.getElementById('login-band').innerHTML = esc(siteName) + ' <span>Admin</span>';
 
     if (favUrl) {
-      setFavicon(formatDriveUrl(favUrl));
+      document.getElementById('admin-tab-favicon').href = formatDriveUrl(favUrl);
     }
 
     const r = document.documentElement;
