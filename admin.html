@@ -33,12 +33,14 @@
   .row { background: var(--card); border-radius: 10px; padding: 8px 12px; margin-bottom: 8px; box-shadow: 0 2px 6px rgba(0, 20, 60, .08); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
   .muted { color: var(--muted); font-size: .88rem; }
   button { cursor: pointer; border: none; border-radius: 8px; padding: 8px 14px; font-weight: 700; font-size: .85rem; }
-  button[disabled] { opacity: .35; cursor: not-allowed; }
+  button[disabled] { opacity: 1; cursor: default; }
   .btn-accent { background: var(--accent); color: #fff; }
   .btn-primary { background: var(--primary); color: #fff; }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-amber { background: var(--amber); color: #fff; }
   .btn-ghost { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
   .btn-red { background: var(--red); color: #fff; }
-  .btn-mini { padding: 5px 10px; font-size: .72rem; line-height: 1.2; border-radius: 8px; min-width: 58px; text-align: center; }
+  .btn-mini { padding: 5px 10px; font-size: .72rem; line-height: 1.2; border-radius: 8px; min-width: 64px; text-align: center; }
   .badge { border-radius: 6px; padding: 2px 8px; font-size: .7rem; font-weight: 700; margin-left: 6px; color: #fff; background: var(--primary); }
   .badge.a { background: var(--accent); }
   .badge.r { background: var(--red); }
@@ -287,16 +289,18 @@ async function loadAll() {
     <div class="card"><b>${analytics.healthRatio || 0}</b><span>Health ratio</span></div>` : '';
 
   $('members').innerHTML = (Array.isArray(users) && users.length) ? users.map(u => {
-    const sb = u.status === 'Approved' ? 'g' : (u.status === 'Banned' ? 'r' : 'p');
     const on = isOnline(u.last_seen);
     const isPaid = u.is_paid === 1;
+    const isApproved = u.status === 'Approved';
+    const isPending = (u.status || 'Pending') === 'Pending';
+    const isBanned = u.status === 'Banned';
 
     return `
       <div class="row">
         <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
           <b>${esc(u.member_number || '')} ${esc(u.name)}</b>
           <span class="dot ${on ? 'on' : 'off'}" title="${on ? 'On site now' : 'Last seen ' + (u.last_seen || 'never')}"></span>
-          <span class="badge ${sb}">${esc(u.status || 'Pending').toUpperCase()}</span>
+          ${isBanned ? '<span class="badge r">BANNED</span>' : ''}
           ${u.is_admin ? '<span class="badge a">ADMIN</span>' : ''}
           <span class="chip">Posts ${u.post_count || 0}</span>
           <span class="chip">Modules ${u.modules_done || 0}</span>
@@ -305,9 +309,9 @@ async function loadAll() {
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
           <button class="${isPaid ? 'btn-primary' : 'btn-ghost'} btn-mini" onclick="act('/api/admin/set-paid', { user_id: ${u.id}, is_paid: ${isPaid ? 0 : 1} })">${isPaid ? 'Paid' : 'Free'}</button>
-          <button class="btn-primary btn-mini" ${u.status === 'Approved' ? 'disabled' : ''} onclick="setStatus(${u.id}, 'Approved')">Approve</button>
-          <button class="btn-ghost btn-mini" ${u.status === 'Pending' ? 'disabled' : ''} onclick="setStatus(${u.id}, 'Pending')">Pending</button>
-          <button class="btn-red btn-mini" ${u.status === 'Banned' ? 'disabled' : ''} onclick="setStatus(${u.id}, 'Banned')">Banned</button>
+          <button class="${isApproved ? 'btn-green' : 'btn-ghost'} btn-mini" ${isApproved ? 'disabled' : ''} onclick="setStatus(${u.id}, 'Approved')">${isApproved ? 'Approved' : 'Approve'}</button>
+          <button class="${isPending ? 'btn-amber' : 'btn-ghost'} btn-mini" ${isPending ? 'disabled' : ''} onclick="setStatus(${u.id}, 'Pending')">Pending</button>
+          <button class="btn-red btn-mini" ${isBanned ? 'disabled' : ''} onclick="setStatus(${u.id}, 'Banned')">Banned</button>
           <label class="chk"><input type="checkbox" ${u.is_admin ? 'checked' : ''} onchange="act('/api/admin/set-admin', { user_id: ${u.id}, is_admin: this.checked ? 1 : 0 })"> Admin</label>
           <button class="btn-ghost btn-mini" onclick="resetPw(${u.id})">Reset PW</button>
         </div>
