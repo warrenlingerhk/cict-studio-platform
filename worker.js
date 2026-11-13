@@ -152,9 +152,10 @@ async function handleSignup(request, env, ctx) {
     return json({ error: 'An account with this email already exists. Please log in.' }, 409);
   }
 
-  const countRow = await env.DB.prepare('SELECT COUNT(*) as c FROM users').first();
-  const nextNum = (countRow ? countRow.c : 0) + 1;
-  const isFirstUser = nextNum === 1;
+  const maxRow = await env.DB.prepare('SELECT MAX(CAST(member_number AS INTEGER)) as max_num FROM users').first();
+  const currentMax = maxRow && maxRow.max_num ? maxRow.max_num : 0;
+  const isFirstUser = currentMax === 0;
+  const nextNum = isFirstUser ? 1 : Math.max(102, currentMax + 1);
   const hash = await hashPassword(password);
 
   await env.DB.prepare(`
