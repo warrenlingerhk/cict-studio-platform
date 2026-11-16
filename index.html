@@ -40,6 +40,7 @@
     .hero { overflow: hidden; display: grid; grid-template-columns: 1.2fr .8fr; }
     .hero-media { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); width: 100%; min-height: 240px; }
     .hero-copy { padding: 34px 30px 28px; }
+    .hero-tagline { font-size: .82rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); margin: 0 0 8px; }
     .hero h1 { font-size: clamp(1.5rem, 3.8vw, 2.3rem); font-weight: 800; line-height: 1.2; margin: 0; color: var(--primary); }
     .hero-bullets { list-style: none; padding: 0; margin: 16px 0 0; }
     .hero-bullets li { font-size: 1.05rem; font-weight: 700; color: var(--slate); margin-bottom: 8px; padding-left: 22px; position: relative; }
@@ -95,6 +96,7 @@
     <div>
       <section class="hero card">
         <div class="hero-copy">
+          <p class="hero-tagline hidden" id="hero-tagline"></p>
           <h1 id="hero-title">Loading...</h1>
           <ul class="hero-bullets" id="hero-bullets"></ul>
         </div>
@@ -195,9 +197,7 @@
 </footer>
 
 <script>
-const CMS_LESSONS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRayZvzl-ACC99pLhQWes9FU3gI7LDQaikNYRtRh0hQvtbRdZ8Nr1MXkFlaOmfR4AXvkcQpo7fAlfBp/pub?gid=0&single=true&output=csv';
-const SETTINGS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-GuKH1NLoIOG9UoA8WV8jPd3hw8CFzu9g5NnuPnXv9ck-iJ7tbsQKVG1VKXHRLUlfs2y_QesvszsV/pub?gid=507176348&single=true&output=csv';
-
+let CMS_LESSONS_URL = '';
 let LESSONS = [];
 
 function formatDriveUrl(url) {
@@ -240,25 +240,32 @@ function parseCSV(text) {
 
 async function applySettings() {
   try {
-    const res = await fetch(SETTINGS_CSV_URL);
-    const csv = await res.text();
-    const rows = parseCSV(csv);
-    if (rows.length < 2) return;
-    const s = rows[1];
+    const res = await fetch('/api/config');
+    if (!res.ok) return;
+    const cfg = await res.json();
+    CMS_LESSONS_URL = cfg.cms_csv_url || '';
+    const s = cfg.settings || {};
 
-    const siteName   = s[0] || 'Platform';
-    const logoUrl    = s[4] || '';
-    const favUrl     = s[5] || '';
-    const heroTitle  = s[6] || 'Your Legacy, Scaled by Design.';
-    const heroPoints = s[7] || '';
-    const primary    = s[8] || '#0B2545';
-    const accent     = s[9] || '#D4AF37';
-    const bg         = s[10] || '#F8F9FA';
+    const siteName   = s.site_name || 'Platform';
+    const tagline    = s.tagline || '';
+    const logoUrl    = s.logo_url || '';
+    const favUrl     = s.favicon_url || '';
+    const heroTitle  = s.hero_title || 'Your Legacy, Scaled by Design.';
+    const heroPoints = s.hero_points || '';
+    const primary    = s.primary_color || '#0B2545';
+    const accent     = s.accent_color || '#D4AF37';
+    const bg         = s.bg_color || '#F8F9FA';
 
     document.getElementById('site-name').innerText = siteName;
     document.getElementById('tab-title').innerText = siteName;
     document.getElementById('footer-text').innerHTML = `&copy; 2026 ${escapeHtml(siteName)}. All rights reserved.`;
     document.getElementById('signup-band').innerText = 'Join ' + siteName;
+
+    const tagEl = document.getElementById('hero-tagline');
+    if (tagline) {
+      tagEl.innerText = tagline;
+      tagEl.classList.remove('hidden');
+    }
 
     if (logoUrl) {
       const logoEl = document.getElementById('site-logo');
@@ -339,6 +346,10 @@ function renderHeader() {
 
 async function renderLessons() {
   const host = document.getElementById('course-list-home');
+  if (!CMS_LESSONS_URL) {
+    host.innerHTML = '<p class="community-sub" style="text-align: center; margin-top: 10px;">No lessons configured yet.</p>';
+    return;
+  }
   try {
     const res = await fetch(CMS_LESSONS_URL);
     const csv = await res.text();
@@ -530,8 +541,10 @@ setInterval(() => {
   if (token) fetch('/api/heartbeat', { headers: { 'Authorization': 'Bearer ' + token } }).catch(() => {});
 }, 60000);
 
-applySettings();
-showHome();
+(async function init() {
+  await applySettings();
+  showHome();
+})();
 </script>
 </body>
 </html>
