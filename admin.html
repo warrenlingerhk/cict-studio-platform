@@ -33,7 +33,7 @@
   .row { background: var(--card); border-radius: 10px; padding: 8px 12px; margin-bottom: 8px; box-shadow: 0 2px 6px rgba(0, 20, 60, .08); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
   .muted { color: var(--muted); font-size: .88rem; }
   button { cursor: pointer; border: none; border-radius: 8px; padding: 8px 14px; font-weight: 700; font-size: .85rem; }
-  button[disabled] { opacity: 1; cursor: default; }
+  button[disabled] { opacity: 0.7; cursor: default; }
   .btn-accent { background: var(--accent); color: #fff; }
   .btn-primary { background: var(--primary); color: #fff; }
   .btn-green { background: var(--green); color: #fff; }
@@ -54,10 +54,28 @@
   #login { max-width: 380px; margin: 10vh auto; background: #fff; border-radius: 14px; box-shadow: 0 8px 24px rgba(0, 20, 60, .12); overflow: hidden; }
   .auth-band { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); color: #fff; font-weight: 800; font-size: 1.2rem; padding: 16px 20px; }
   .auth-body { padding: 22px; }
-  input { width: 100%; padding: 11px; margin: 6px 0 14px; border: 2px solid #dfe6ee; border-radius: 8px; font-size: .95rem; }
-  input:focus { outline: none; border-color: var(--accent); }
+  input, textarea { width: 100%; padding: 11px; margin: 6px 0 14px; border: 2px solid #dfe6ee; border-radius: 8px; font-size: .95rem; font-family: inherit; }
+  input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   .hidden { display: none !important; }
   .post-ex { background: #f5f7fa; border-radius: 8px; padding: 8px 10px; margin: 6px 0; font-size: .85rem; color: var(--muted); max-width: 520px; }
+
+  /* Expandable Site Setup Accordion */
+  .accordion { background: var(--card); border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 20, 60, .08); margin: 16px 0 22px; border-left: 5px solid var(--accent); overflow: hidden; }
+  .acc-head { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; background: #fff; }
+  .acc-head:hover { background: #fafbfd; }
+  .acc-title { font-size: 1.08rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+  .acc-chevron { font-size: .9rem; transition: transform 0.2s ease; color: var(--accent); font-weight: 900; }
+  .accordion.open .acc-chevron { transform: rotate(180deg); }
+  .acc-body { display: none; padding: 18px 22px 22px; border-top: 1px solid #eef2f7; background: #fcfdfe; }
+  .accordion.open .acc-body { display: block; }
+  .setup-desc { color: var(--muted); font-size: .9rem; margin-bottom: 18px; }
+  .q-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px 20px; }
+  .q-item label { display: block; font-weight: 700; font-size: .9rem; color: var(--primary); margin-bottom: 3px; }
+  .q-item .q-help { display: block; font-size: .78rem; color: var(--muted); margin-bottom: 6px; line-height: 1.35; }
+  .q-item input { margin: 0; padding: 9px 11px; font-size: .9rem; background: #fff; }
+  .color-wrap { display: flex; gap: 8px; align-items: center; }
+  .color-wrap input[type="color"] { width: 42px; height: 38px; padding: 2px; border-radius: 8px; cursor: pointer; flex-shrink: 0; }
+  .acc-footer { margin-top: 20px; padding-top: 14px; border-top: 1px solid #eef2f7; display: flex; align-items: center; gap: 14px; }
 </style>
 </head>
 <body>
@@ -78,6 +96,26 @@
     <a class="pill" href="/">&#8592; Back to site</a>
   </header>
   <h2 style="margin-top:0; font-size:1.6rem;">Admin Dashboard</h2>
+
+  <!-- Collapsible Onboarding & Site Setup Dropdown -->
+  <div class="accordion" id="setup-accordion">
+    <div class="acc-head" onclick="toggleSetupAccordion()">
+      <div class="acc-title">
+        <span id="setup-module-title">Onboarding &amp; Academy Foundations</span>
+        <span class="badge a">Site Setup</span>
+      </div>
+      <span class="acc-chevron">&#9660;</span>
+    </div>
+    <div class="acc-body">
+      <p class="setup-desc" id="setup-topic-desc">Complete these onboarding items to automatically set up your custom academy portal.</p>
+      <div class="q-grid" id="setup-questions"></div>
+      <div class="acc-footer">
+        <button id="save-setup-btn" class="btn-primary" style="padding:10px 22px;" onclick="saveSiteSettings()">Save &amp; Publish Settings</button>
+        <span id="setup-save-msg" class="muted" style="font-weight:700;"></span>
+      </div>
+    </div>
+  </div>
+
   <div class="cards" id="stats"></div>
   <h2>Analytics</h2>
   <div class="cards" id="analytics"></div>
@@ -91,11 +129,16 @@
 </div>
 
 <script>
-const SETTINGS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ-GuKH1NLoIOG9UoA8WV8jPd3hw8CFzu9g5NnuPnXv9ck-iJ7tbsQKVG1VKXHRLUlfs2y_QesvszsV/pub?gid=507176348&single=true&output=csv';
+const ADMIN_QUESTIONS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTexC6A2yzJEz3sH8UDKzmbb9Qu1rxsOowzT26Nkjwy_nBxFLogkzDF0M17FOlJaHAyI1Vp6hWeAYhb/pub?gid=1419818085&single=true&output=csv';
 const KEYS = ['token'];
 let TOKEN = '';
+let SETUP_FIELDS = [];
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function toggleSetupAccordion() {
+  $('setup-accordion').classList.toggle('open');
+}
 
 function formatDriveUrl(url) {
   if (!url) return '';
@@ -133,6 +176,25 @@ function parseCSV(text) {
   return rows;
 }
 
+function mapTitleToKey(title) {
+  const t = String(title || '').trim().toLowerCase();
+  if (t.includes('site name')) return 'site_name';
+  if (t.includes('tagline')) return 'tagline';
+  if (t.includes('hero title')) return 'hero_title';
+  if (t.includes('sub-points') || t.includes('subpoints') || t.includes('bullet')) return 'hero_points';
+  if (t.includes('logo')) return 'logo_url';
+  if (t.includes('favicon')) return 'favicon_url';
+  if (t.includes('primary color')) return 'primary_color';
+  if (t.includes('accent color')) return 'accent_color';
+  if (t.includes('background color')) return 'bg_color';
+  if (t.includes('support') && t.includes('email')) return 'support_email';
+  if (t.includes('dream outcome')) return 'dream_outcome';
+  if (t.includes('avatar')) return 'target_avatar';
+  if (t.includes('method')) return 'signature_method';
+  if (t.includes('domain')) return 'custom_domain';
+  return t.replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+}
+
 function setFavicon(url) {
   if (!url) return;
   document.querySelectorAll("link[rel*='icon']").forEach(el => el.remove());
@@ -144,33 +206,111 @@ function setFavicon(url) {
   document.head.appendChild(link);
 }
 
-async function applyAdminSettings() {
+function applyThemeValues(s) {
+  if (!s) return;
+  const siteName = s.site_name || 'Platform';
+  const favUrl   = s.favicon_url || '';
+  const primary  = s.primary_color || '#0B2545';
+  const accent   = s.accent_color || '#D4AF37';
+  const bg       = s.bg_color || '#F8F9FA';
+
+  $('admin-site-name').innerText = siteName;
+  $('admin-tab-title').innerText = siteName + ' — Site Administration';
+  $('login-band').innerHTML = esc(siteName) + ' <span>Admin</span>';
+
+  if (favUrl) setFavicon(formatDriveUrl(favUrl));
+
+  const r = document.documentElement;
+  r.style.setProperty('--primary', primary);
+  r.style.setProperty('--accent', accent);
+  r.style.setProperty('--bg', bg);
+}
+
+async function loadSetupQuestionsAndValues() {
   try {
-    const res = await fetch(SETTINGS_CSV_URL);
-    const csv = await res.text();
+    const [qRes, sData] = await Promise.all([
+      fetch(ADMIN_QUESTIONS_CSV_URL),
+      getJSON('/api/admin/settings')
+    ]);
+    const csv = await qRes.text();
     const rows = parseCSV(csv);
-    if (rows.length < 2) return;
-    const s = rows[1];
+    const saved = (sData && sData.settings) ? sData.settings : {};
+    applyThemeValues(saved);
 
-    const siteName = s[0] || 'Platform';
-    const favUrl   = s[5] || '';
-    const primary  = s[8] || '#0B2545';
-    const accent   = s[9] || '#D4AF37';
-    const bg       = s[10] || '#F8F9FA';
+    SETUP_FIELDS = [];
+    let html = '';
 
-    document.getElementById('admin-site-name').innerText = siteName;
-    document.getElementById('admin-tab-title').innerText = siteName + ' — Site Administration';
-    document.getElementById('login-band').innerHTML = esc(siteName) + ' <span>Admin</span>';
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const type = (r[1] || '').trim().toLowerCase();
+      const title = (r[2] || '').trim();
+      const content = (r[3] || '').trim();
+      const placeholder = (r[4] || '').trim();
 
-    if (favUrl) {
-      setFavicon(formatDriveUrl(favUrl));
+      if (type === 'module' && title) {
+        $('setup-module-title').textContent = title;
+      } else if (type === 'text' && content) {
+        $('setup-topic-desc').textContent = content;
+      } else if (type === 'answer' && title) {
+        const key = mapTitleToKey(title);
+        const val = saved[key] || '';
+        const isColor = key.endsWith('_color');
+        SETUP_FIELDS.push({ key, title });
+
+        if (isColor) {
+          const hexVal = /^#[0-9A-Fa-f]{6}$/.test(val) ? val : '#0B2545';
+          html += `
+            <div class="q-item">
+              <label for="cfg-${esc(key)}">${esc(title)}</label>
+              <span class="q-help">${esc(content)}</span>
+              <div class="color-wrap">
+                <input type="color" id="pick-${esc(key)}" value="${esc(hexVal)}" oninput="$('cfg-${esc(key)}').value = this.value.toUpperCase()">
+                <input type="text" id="cfg-${esc(key)}" value="${esc(val)}" placeholder="${esc(placeholder)}" oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)) $('pick-${esc(key)}').value = this.value">
+              </div>
+            </div>`;
+        } else {
+          html += `
+            <div class="q-item">
+              <label for="cfg-${esc(key)}">${esc(title)}</label>
+              <span class="q-help">${esc(content)}</span>
+              <input type="text" id="cfg-${esc(key)}" value="${esc(val)}" placeholder="${esc(placeholder)}">
+            </div>`;
+        }
+      }
     }
 
-    const r = document.documentElement;
-    r.style.setProperty('--primary', primary);
-    r.style.setProperty('--accent', accent);
-    r.style.setProperty('--bg', bg);
-  } catch (err) {}
+    $('setup-questions').innerHTML = html || '<p class="muted">No setup questions found in sheet.</p>';
+  } catch (err) {
+    $('setup-questions').innerHTML = '<p class="muted">Could not load setup questions.</p>';
+  }
+}
+
+async function saveSiteSettings() {
+  const btn = $('save-setup-btn');
+  const msg = $('setup-save-msg');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  if (msg) msg.textContent = '';
+
+  const payload = {};
+  SETUP_FIELDS.forEach(f => {
+    const el = $('cfg-' + f.key);
+    if (el) payload[f.key] = el.value.trim();
+  });
+
+  try {
+    const r = await api('/api/admin/settings', { method: 'POST', body: { settings: payload } });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      if (msg) { msg.style.color = 'var(--red)'; msg.textContent = j.error || 'Failed to save settings.'; }
+    } else {
+      applyThemeValues(payload);
+      if (msg) { msg.style.color = 'var(--green)'; msg.textContent = 'Saved! Your site has been updated.'; }
+    }
+  } catch (e) {
+    if (msg) { msg.style.color = 'var(--red)'; msg.textContent = 'Error: ' + e.message; }
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = 'Save & Publish Settings'; }
 }
 
 function isOnline(ls) {
@@ -218,11 +358,16 @@ function showLogin(msg) {
 function showDash() {
   $('login').classList.add('hidden');
   $('dash').classList.remove('hidden');
+  loadSetupQuestionsAndValues();
   loadAll();
 }
 
 async function boot() {
-  await applyAdminSettings();
+  try {
+    const pub = await fetch('/api/config').then(r => r.ok ? r.json() : null);
+    if (pub && pub.settings) applyThemeValues(pub.settings);
+  } catch (e) {}
+
   TOKEN = await findToken();
   if (TOKEN) { showDash(); return; }
   showLogin('');
