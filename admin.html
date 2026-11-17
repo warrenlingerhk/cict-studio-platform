@@ -421,6 +421,8 @@ async function loadAll() {
 
   $('stats').innerHTML = stats ? `
     <div class="card"><b>${stats.users || 0}</b><span>Members</span></div>
+    <div class="card"><b>${stats.totalSessions || 0}</b><span>Total Sessions</span></div>
+    <div class="card"><b>${stats.totalClicks || 0}</b><span>Total Clicks</span></div>
     <div class="card"><b>${stats.posts || 0}</b><span>Posts</span></div>
     <div class="card"><b>${stats.reports || 0}</b><span>Open reports</span></div>
     <div class="card"><b>${stats.active || 0}</b><span>Active users (last 5 min)</span></div>`
@@ -429,9 +431,9 @@ async function loadAll() {
   $('analytics').innerHTML = analytics ? `
     <div class="card"><b>${analytics.totalUsers || 0}</b><span>Total users</span></div>
     <div class="card"><b>${analytics.activeLearners || 0}</b><span>Active learners</span></div>
-    <div class="card"><b>${analytics.eliteRate || 0}%</b><span>Completion rate (1+ lesson)</span></div>
-    <div class="card"><b>${analytics.engagement || 0}</b><span>Engagement</span></div>
-    <div class="card"><b>${analytics.healthRatio || 0}</b><span>Health ratio</span></div>` : '';
+    <div class="card"><b>${analytics.eliteRate || 0}%</b><span>Active member rate</span></div>
+    <div class="card"><b>${analytics.engagement || 0}</b><span>Avg sessions / user</span></div>
+    <div class="card"><b>${analytics.healthRatio || 0}</b><span>Avg clicks / session</span></div>` : '';
 
   $('members').innerHTML = (Array.isArray(users) && users.length) ? users.map(u => {
     const on = isOnline(u.last_seen);
@@ -447,6 +449,8 @@ async function loadAll() {
           <span class="dot ${on ? 'on' : 'off'}" title="${on ? 'On site now' : 'Last seen ' + (u.last_seen || 'never')}"></span>
           ${isBanned ? '<span class="badge r">BANNED</span>' : ''}
           ${u.is_admin ? '<span class="badge a">ADMIN</span>' : ''}
+          <span class="chip">Sessions ${u.session_count || 0}</span>
+          <span class="chip">Clicks ${u.click_count || 0}</span>
           <span class="chip">Posts ${u.post_count || 0}</span>
           <span class="chip">Modules ${u.modules_done || 0}</span>
           <span class="chip">Lessons ${u.lessons_done || 0}</span>
