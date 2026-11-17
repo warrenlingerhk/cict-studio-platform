@@ -572,12 +572,10 @@ async function handleAdminAnalytics(request, db) {
 
   const totalUsers = await db.prepare('SELECT COUNT(*) as c FROM users').first();
   const activeUsers = await db.prepare('SELECT COUNT(*) as c FROM users WHERE COALESCE(session_count, 0) > 0').first();
-  const totalPosts = await db.prepare('SELECT COUNT(*) as c FROM posts').first();
   const actTotals = await db.prepare('SELECT COALESCE(SUM(session_count), 0) as sessions, COALESCE(SUM(click_count), 0) as clicks FROM users').first();
 
   const totalCount = totalUsers?.c || 0;
   const activeCount = activeUsers?.c || 0;
-  const postsCount = totalPosts?.c || 0;
   const sessions = actTotals?.sessions || 0;
   const clicks = actTotals?.clicks || 0;
 
