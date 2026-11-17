@@ -8,6 +8,7 @@ const MASTER_TENANTS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1
 const MASTER_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzJomF52wqZAUcu3StLXG8M41_PzhUwQiK0uoU9kIiHkde5nBQIKj51tcM_7vD0RX9GdA/exec';
 
 let TENANTS_CACHE = { ts: 0, list: [] };
+const MIGRATED_DBS = new Set();
 
 export default {
   async fetch(request, env, ctx) {
@@ -43,6 +44,8 @@ async function handleApi(request, env, ctx, url) {
     return json({ error: `Database binding "${tenant.db_binding}" is not attached to this Worker.` }, 500);
   }
 
+  await ensureActivityColumns(db, tenant.db_binding);
+
   // --- PUBLIC TENANT CONFIG ---
   if (path === '/api/config' && method === 'GET') {
     return await handleGetConfig(db, tenant);
@@ -60,6 +63,9 @@ async function handleApi(request, env, ctx, url) {
   }
   if (path === '/api/heartbeat' && method === 'GET') {
     return await handleHeartbeat(request, db);
+  }
+  if (path === '/api/activity' && method === 'POST') {
+    return await handleRecordActivity(request, db);
   }
 
   // --- LESSON ANSWERS & PROGRESS ---
@@ -116,6 +122,28 @@ async function handleApi(request, env, ctx, url) {
   }
 
   return json({ error: 'Endpoint not found.' }, 404);
+}
+
+// ============================================================================
+// DATABASE AUTO-MIGRATION FOR ACTIVITY COUNTERS
+// ============================================================================
+
+async function ensureActivityColumns(db, bindingName) {
+  if (MIGRATED_DBS.has(bindingName)) return;
+  try {
+    const info = await db.prepare('PRAGMA table_info(users)').all();
+    const cols = new Set((info.results || []).map(c => c.name));
+    if (!cols.has('session_count')) {
+      await db.prepare('ALTER TABLE users ADD COLUMN session_count INTEGER DEFAULT 0').run();
+    }
+    if (!cols.has('click_count')) {
+      await db.prepare('ALTER TABLE users ADD COLUMN click_count INTEGER DEFAULT 0').run();
+    }
+    if (!cols.has('last_active_at')) {
+      await db.prepare('ALTER TABLE users ADD COLUMN last_active_at TEXT').run();
+    }
+    MIGRATED_DBS.add(bindingName);
+  } catch (e) {}
 }
 
 // ============================================================================
@@ -229,7 +257,7 @@ async function handleGetConfig(db, tenant) {
 }
 
 // ============================================================================
-// HANDLERS: AUTH
+// HANDLERS: AUTH & ACTIVITY TRACKING
 // ============================================================================
 
 async function handleLogin(request, db) {
@@ -259,10 +287,18 @@ async function handleLogin(request, db) {
     return json({ error: 'This account has been banned. Please contact the administrator.' }, 403);
   }
 
-  await db.prepare("UPDATE users SET last_seen = datetime('now') WHERE id = ?").bind(user.id).run();
-
   const token = user.id + ':' + crypto.randomUUID();
-  await db.prepare("UPDATE users SET auth_token = ? WHERE id = ?").bind(token, user.id).run();
+  await db.prepare(`
+    UPDATE users
+    SET last_seen = datetime('now'),
+        auth_token = ?,
+        session_count = COALESCE(session_count, 0) + CASE
+          WHEN last_active_at IS NULL OR last_active_at <= datetime('now', '-30 minutes') THEN 1
+          ELSE 0
+        END,
+        last_active_at = datetime('now')
+    WHERE id = ?
+  `).bind(token, user.id).run();
 
   return json({
     token,
@@ -295,8 +331,8 @@ async function handleSignup(request, db, tenant, ctx) {
   const hash = await hashPassword(password);
 
   await db.prepare(`
-    INSERT INTO users (name, email, password, member_number, status, is_admin, is_paid, created_at, last_seen)
-    VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    INSERT INTO users (name, email, password, member_number, status, is_admin, is_paid, session_count, click_count, last_active_at, created_at, last_seen)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1, datetime('now'), datetime('now'), datetime('now'))
   `).bind(
     name || 'Classmate',
     cleanEmail,
@@ -357,6 +393,32 @@ async function handleHeartbeat(request, db) {
   if (user) {
     await db.prepare("UPDATE users SET last_seen = datetime('now') WHERE id = ?").bind(user.id).run();
   }
+  return json({ ok: true });
+}
+
+async function handleRecordActivity(request, db) {
+  const body = await request.json().catch(() => ({}));
+  const header = request.headers.get('Authorization') || '';
+  const token = header.replace(/^Bearer\s+/i, '').trim() || String(body.token || '').trim();
+  if (!token) return json({ ok: false }, 401);
+
+  const user = await db.prepare('SELECT id FROM users WHERE auth_token = ?').bind(token).first();
+  if (!user) return json({ ok: false }, 401);
+
+  const clicks = Math.max(1, Math.min(500, parseInt(body.clicks, 10) || 1));
+
+  await db.prepare(`
+    UPDATE users
+    SET click_count = COALESCE(click_count, 0) + ?,
+        session_count = COALESCE(session_count, 0) + CASE
+          WHEN last_active_at IS NULL OR last_active_at <= datetime('now', '-30 minutes') THEN 1
+          ELSE 0
+        END,
+        last_active_at = datetime('now'),
+        last_seen = datetime('now')
+    WHERE id = ?
+  `).bind(clicks, user.id).run();
+
   return json({ ok: true });
 }
 
@@ -492,12 +554,15 @@ async function handleAdminStats(request, db) {
   let rCount = { c: 0 };
   try { rCount = await db.prepare('SELECT COUNT(*) as c FROM reports WHERE resolved = 0').first() || { c: 0 }; } catch (e) {}
   const aCount = await db.prepare("SELECT COUNT(*) as c FROM users WHERE last_seen >= datetime('now', '-5 minutes')").first();
+  const actTotals = await db.prepare('SELECT COALESCE(SUM(session_count), 0) as sessions, COALESCE(SUM(click_count), 0) as clicks FROM users').first();
 
   return json({
     users: uCount ? uCount.c : 0,
     posts: pCount ? pCount.c : 0,
     reports: rCount ? rCount.c : 0,
-    active: aCount ? aCount.c : 0
+    active: aCount ? aCount.c : 0,
+    totalSessions: actTotals ? actTotals.sessions : 0,
+    totalClicks: actTotals ? actTotals.clicks : 0
   });
 }
 
@@ -506,16 +571,22 @@ async function handleAdminAnalytics(request, db) {
   if (!admin) return json({ error: 'Unauthorized.' }, 403);
 
   const totalUsers = await db.prepare('SELECT COUNT(*) as c FROM users').first();
+  const activeUsers = await db.prepare('SELECT COUNT(*) as c FROM users WHERE COALESCE(session_count, 0) > 0').first();
   const totalPosts = await db.prepare('SELECT COUNT(*) as c FROM posts').first();
+  const actTotals = await db.prepare('SELECT COALESCE(SUM(session_count), 0) as sessions, COALESCE(SUM(click_count), 0) as clicks FROM users').first();
+
   const totalCount = totalUsers?.c || 0;
+  const activeCount = activeUsers?.c || 0;
   const postsCount = totalPosts?.c || 0;
+  const sessions = actTotals?.sessions || 0;
+  const clicks = actTotals?.clicks || 0;
 
   return json({
     totalUsers: totalCount,
-    activeLearners: totalCount > 0 ? totalCount : 0,
-    eliteRate: 0,
-    engagement: totalCount > 0 ? (postsCount / totalCount).toFixed(1) : '0.0',
-    healthRatio: '0.00'
+    activeLearners: activeCount,
+    eliteRate: totalCount > 0 ? Math.round((activeCount / totalCount) * 100) : 0,
+    engagement: totalCount > 0 ? (sessions / totalCount).toFixed(1) : '0.0',
+    healthRatio: sessions > 0 ? (clicks / sessions).toFixed(1) : '0.0'
   });
 }
 
@@ -525,6 +596,8 @@ async function handleAdminUsers(request, db) {
 
   const rows = await db.prepare(`
     SELECT u.id, u.member_number, u.name, u.email, u.status, u.is_admin, u.is_paid, u.created_at, u.last_seen,
+      COALESCE(u.session_count, 0) as session_count,
+      COALESCE(u.click_count, 0) as click_count,
       (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) as post_count,
       0 as modules_done,
       0 as lessons_done
@@ -600,6 +673,8 @@ async function pushFullMembersSync(db, tenant) {
     status: u.status,
     is_paid: u.is_paid,
     is_admin: u.is_admin,
+    session_count: u.session_count || 0,
+    click_count: u.click_count || 0,
     post_count: u.post_count || 0,
     modules_done: 0,
     lessons_done: 0,
