@@ -536,10 +536,42 @@ function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-setInterval(() => {
+let pendingClicks = 0;
+
+document.addEventListener('click', () => {
+  if (localStorage.getItem('token')) {
+    pendingClicks++;
+  }
+}, { passive: true });
+
+function flushActivity(useBeacon = false) {
   const token = localStorage.getItem('token');
-  if (token) fetch('/api/heartbeat', { headers: { 'Authorization': 'Bearer ' + token } }).catch(() => {});
-}, 60000);
+  if (!token) return;
+
+  if (pendingClicks > 0) {
+    const batch = pendingClicks;
+    pendingClicks = 0;
+    const payload = JSON.stringify({ token, clicks: batch });
+
+    if (useBeacon && navigator.sendBeacon) {
+      navigator.sendBeacon('/api/activity', new Blob([payload], { type: 'application/json' }));
+    } else {
+      fetch('/api/activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: payload,
+        keepalive: true
+      }).catch(() => { pendingClicks += batch; });
+    }
+  } else if (!useBeacon) {
+    fetch('/api/heartbeat', { headers: { 'Authorization': 'Bearer ' + token } }).catch(() => {});
+  }
+}
+
+setInterval(() => flushActivity(false), 60000);
+window.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushActivity(true);
+});
 
 (async function init() {
   await applySettings();
