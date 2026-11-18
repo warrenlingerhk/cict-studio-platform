@@ -1,692 +1,1173 @@
 
 
-// ============================================================================
-// MULTI-TENANT SAAS CLOUDFLARE WORKER (worker.js)
-// Routes requests by hostname via Master Tenants Sheet & binds D1 dynamically
-// ============================================================================
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="tab-title">Platform</title>
+  <link rel="icon" type="image/png" id="tab-favicon" href="">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0B2545;
+      --accent: #D4AF37;
+      --bg: #F8F9FA;
+      --slate: #6C757D;
+      --lightBlue: #E9ECEF;
+      --red: #C62828;
+      --green: #1B7F3B;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--primary); font-family: 'Nunito Sans', sans-serif; margin: 0; font-size: 16px; }
+    h1, h2, h3, h4, .brand { font-family: 'Poppins', sans-serif; }
+    .hidden { display: none !important; }
+    .wrap { width: min(1150px, 94%); margin-inline: auto; }
+    .site-head { position: sticky; top: 0; z-index: 50; background: var(--bg); }
+    .head-in { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 3px solid var(--primary); }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.25rem; color: var(--primary); text-decoration: none; }
+    .brand-logo { width: 44px; height: 44px; object-fit: contain; }
+    .btn { border-radius: 999px; font-weight: 800; cursor: pointer; transition: transform .15s, opacity .15s; font-family: 'Nunito Sans'; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+    .btn:hover { transform: translateY(-2px); }
+    .btn:disabled { opacity: 0.6; cursor: default; transform: none; }
+    .btn.small { padding: 7px 18px; font-size: .88rem; }
+    .btn.ghost { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+    .btn.cta { background: var(--accent); color: #fff; box-shadow: 0 4px 0 rgba(0,0,0,.15); }
+    .btn.primary { background: var(--primary); color: #fff; }
+    .name-chip { background: #fff; border: 2px solid var(--primary); border-radius: 999px; padding: 6px 16px; font-size: .85rem; font-weight: 800; cursor: pointer; transition: background .2s; }
+    .name-chip:hover { background: var(--lightBlue); }
+    .layout { display: grid; grid-template-columns: 1.2fr .8fr; gap: 28px; padding: 26px 0 70px; align-items: start; }
+    .card { background: #fff; border-radius: 18px; box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+    .hero { overflow: hidden; display: grid; grid-template-columns: 1.2fr .8fr; }
+    .hero-media { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); width: 100%; min-height: 240px; }
+    .hero-copy { padding: 34px 30px 28px; }
+    .hero-tagline { font-size: .82rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); margin: 0 0 8px; }
+    .hero h1 { font-size: clamp(1.5rem, 3.8vw, 2.3rem); font-weight: 800; line-height: 1.2; margin: 0; color: var(--primary); }
+    .hero-bullets { list-style: none; padding: 0; margin: 16px 0 0; }
+    .hero-bullets li { font-size: 1.05rem; font-weight: 700; color: var(--slate); margin-bottom: 8px; padding-left: 22px; position: relative; }
+    .hero-bullets li::before { content: '•'; color: var(--accent); font-weight: 800; position: absolute; left: 0; }
+    .rail-title { font-size: 1.25rem; font-weight: 800; margin: 6px 0 14px; text-align: center; }
+    .course-list { display: flex; flex-direction: column; gap: 14px; }
+    .course { border-radius: 16px; padding: 18px 20px; box-shadow: 0 6px 0 rgba(0,0,0,.15); color: #fff; }
+    .course h3 { margin: 0; font-size: 1.2rem; font-weight: 800; }
+    .course-btn { width: 100%; padding: 10px; border-radius: 999px; border: none; background: var(--primary); color: #fff; font-weight: 800; cursor: pointer; font-size: 1rem; margin: 10px 0 0; transition: transform .15s; }
+    .course-btn:hover { transform: translateY(-2px); }
+    .community { padding: 26px 28px; margin-top: 28px; }
+    .community h2 { font-size: 1.5rem; margin: 0 0 6px; }
+    .community-sub { color: var(--slate); font-weight: 700; margin: 0 0 16px; }
+    #post-input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 2px solid var(--slate); font: inherit; font-size: 1rem; min-height: 80px; }
+    .post { background: #fff; border-radius: 12px; padding: 16px 18px; margin-top: 16px; border: 1px solid var(--lightBlue); }
+    .post-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .post-name { font-weight: 800; }
+    .post-date { font-size: .8rem; color: var(--slate); font-weight: 700; }
 
-const MASTER_CSV_URL =
-  'https://docs.google.com/spreadsheets/d/1M4QjGOSANR6EMFa_uZ9BsSzKwM5L0mbEkVBjJs1oD_k/gviz/tq?tqx=out:csv';
+    /* Lesson Viewer & Module Accordion */
+    .lesson-wrap { padding: 26px 0 70px; max-width: 880px; margin-inline: auto; }
+    .lesson-banner { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); color: #fff; border-radius: 18px; padding: 26px 30px; margin: 16px 0 24px; box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+    .lesson-banner .lesson-kicker { font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; opacity: .9; margin-bottom: 4px; }
+    .lesson-banner h1 { margin: 0; font-size: clamp(1.4rem, 3vw, 2rem); font-weight: 800; }
+    .mod-card { background: #fff; border-radius: 16px; box-shadow: 0 6px 18px rgba(0,0,0,.07); margin-bottom: 16px; border-left: 5px solid var(--accent); overflow: hidden; }
+    .mod-head { padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; gap: 14px; cursor: pointer; user-select: none; background: #fff; }
+    .mod-head:hover { background: #fafbfd; }
+    .mod-title { font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 1.12rem; color: var(--primary); }
+    .mod-chevron { font-size: .95rem; color: var(--accent); font-weight: 900; transition: transform .2s ease; }
+    .mod-card.open .mod-chevron { transform: rotate(180deg); }
+    .mod-body { display: none; padding: 20px 24px 24px; border-top: 1px solid #eef2f7; background: #fcfdfe; }
+    .mod-card.open .mod-body { display: block; }
 
-let tenantCache = { data: null, expiresAt: 0 };
+    /* Content Blocks */
+    .cms-block { margin-bottom: 22px; }
+    .cms-block:last-child { margin-bottom: 0; }
+    .cms-head-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .cms-title { font-size: 1.06rem; font-weight: 800; color: var(--primary); margin: 0; }
+    .paid-pill { background: var(--accent); color: #fff; font-size: .7rem; font-weight: 800; padding: 2px 9px; border-radius: 999px; letter-spacing: .04em; text-transform: uppercase; }
+    .locked-notice { background: #fff9e6; border: 1.5px solid var(--accent); color: var(--primary); border-radius: 10px; padding: 11px 14px; font-size: .9rem; font-weight: 700; margin-top: 8px; }
+    .cms-text { color: #2b3a4a; line-height: 1.65; white-space: pre-line; font-size: 1rem; }
+    .cms-list { margin: 6px 0 0; padding-left: 22px; color: #2b3a4a; line-height: 1.65; }
+    .cms-list li { margin-bottom: 6px; }
+    ul.cms-list { list-style-type: disc; }
+    ol.cms-list { list-style-type: decimal; }
+
+    /* Expandable Block */
+    .exp-box { border: 2px solid #e1e8f0; border-radius: 12px; background: #fff; overflow: hidden; }
+    .exp-head { padding: 13px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; cursor: pointer; font-weight: 800; color: var(--primary); background: #f8fafc; }
+    .exp-head:hover { background: #f1f5f9; }
+    .exp-arrow { color: var(--accent); font-size: .85rem; transition: transform .2s; }
+    .exp-box.open .exp-arrow { transform: rotate(180deg); }
+    .exp-body { display: none; padding: 16px 18px; border-top: 1px solid #e1e8f0; }
+    .exp-box.open .exp-body { display: block; }
+    .nested-toggle { background: none; border: none; color: var(--accent); font-weight: 800; font-size: .9rem; cursor: pointer; padding: 6px 0; margin-top: 10px; display: inline-flex; align-items: center; gap: 5px; }
+    .nested-toggle:hover { text-decoration: underline; }
+    .nested-body { display: none; background: #f8fafc; border-left: 3px solid var(--accent); padding: 10px 14px; margin-top: 6px; border-radius: 6px; color: #334155; font-size: .95rem; line-height: 1.6; white-space: pre-line; }
+    .nested-body.open { display: block; }
+
+    /* Image Block */
+    .cms-img-wrap { margin-top: 10px; }
+    .cms-img { max-width: 100%; border-radius: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.08); display: block; }
+    .cms-caption { font-style: italic; color: var(--slate); font-size: .88rem; margin-top: 8px; }
+
+    /* Interactive Answer & Poll Boxes */
+    .interactive-card { background: #fff; border: 2px solid #dfe6ee; border-radius: 12px; padding: 16px 18px; }
+    .prompt-label { font-weight: 700; color: #334155; margin-bottom: 8px; font-size: .96rem; }
+    .answer-input { width: 100%; min-height: 92px; padding: 11px 13px; border-radius: 10px; border: 2px solid #cfd8e3; font: inherit; font-size: .96rem; resize: vertical; }
+    .answer-input:focus { outline: none; border-color: var(--accent); }
+    .poll-opts { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 4px; background: #f8fafd; padding: 14px; border-radius: 12px; }
+    .poll-opt { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; cursor: pointer; font-weight: 700; color: var(--primary); }
+    .poll-opt:hover { background: #eef3f9; }
+    .poll-opt input { width: 17px; height: 17px; accent-color: var(--accent); cursor: pointer; }
+    .action-row { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+    .action-status { font-size: .88rem; font-weight: 800; }
+
+    /* Live Poll Results Chart */
+    .poll-results-wrap { margin-top: 18px; padding-top: 14px; border-top: 1px solid #e2e8f0; }
+    .poll-results-head { font-size: .85rem; font-weight: 800; color: var(--slate); margin-bottom: 12px; }
+    .poll-res-row { display: grid; grid-template-columns: minmax(120px, 210px) 1fr 34px; align-items: center; gap: 14px; margin-bottom: 12px; }
+    .poll-res-label { font-size: .88rem; font-weight: 700; color: var(--primary); line-height: 1.35; }
+    .poll-res-track { width: 100%; height: 11px; background: #e6eef5; border-radius: 999px; overflow: hidden; }
+    .poll-res-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%); transition: width .45s ease; min-width: 0; }
+    .poll-res-count { font-size: .88rem; font-weight: 800; color: var(--primary); text-align: right; }
+
+    /* Dynamic Theme Auth Card */
+    .auth-wrap { min-height: 80vh; display: grid; place-items: center; padding: 50px 0; }
+    .auth-card { width: min(440px, 94%); overflow: hidden; border-radius: 18px; background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+    .auth-band { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); padding: 18px 26px; font-weight: 800; font-size: 1.25rem; color: #fff; font-family: 'Poppins', sans-serif; }
+    .auth-body { padding: 24px 26px; }
+    .auth-body input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 2px solid var(--slate); font: inherit; margin: 6px 0 14px; font-size: 1rem; outline: none; }
+    .auth-body input:focus { border-color: var(--accent); }
+    .auth-body .btn { width: 100%; padding: 12px; font-size: 1rem; }
+    .auth-link { color: var(--accent); font-weight: 800; text-decoration: none; }
+    .auth-link:hover { text-decoration: underline; }
+    .form-error { color: var(--red); font-weight: 800; font-size: 0.95rem; margin-top: 8px; text-align: center; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; display: grid; place-items: center; padding: 20px; }
+    .modal-box { background: #fff; border-radius: 18px; padding: 30px; max-width: 440px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+    .modal-box h3 { margin: 0 0 14px; font-size: 1.35rem; font-weight: 800; }
+    .modal-box input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 2px solid var(--slate); margin-bottom: 10px; font-size: .95rem; }
+    .pill-preview { display: inline-block; background: #fff; border: 2px solid var(--primary); border-radius: 999px; padding: 4px 14px; font-size: .85rem; font-weight: 800; color: var(--primary); }
+
+    @media(max-width: 900px) {
+      .layout, .hero { grid-template-columns: 1fr; }
+      .poll-res-row { grid-template-columns: 1fr 34px; gap: 6px; }
+      .poll-res-label { grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="site-head">
+  <div class="head-in wrap">
+    <a class="brand" href="#" onclick="showHome(); return false;">
+      <img id="site-logo" class="brand-logo hidden" src="" alt="Logo">
+      <span id="site-name">Loading...</span>
+    </a>
+    <div class="head-actions" id="head-actions"></div>
+  </div>
+</header>
+
+<div id="view-home">
+  <div class="wrap layout">
+    <div>
+      <section class="hero card">
+        <div class="hero-copy">
+          <p class="hero-tagline hidden" id="hero-tagline"></p>
+          <h1 id="hero-title">Loading...</h1>
+          <ul class="hero-bullets" id="hero-bullets"></ul>
+        </div>
+        <div class="hero-media"></div>
+      </section>
+
+      <section class="community card">
+        <h2>Community Discussion</h2>
+        <p class="community-sub">Ask questions, share wins, and connect with fellow classmates.</p>
+        <div id="community-composer">
+          <textarea id="post-input" placeholder="Share a thought, question, or win..."></textarea>
+          <button class="btn cta small" style="margin-top: 8px;" onclick="submitPost()">Post</button>
+        </div>
+        <div id="posts-host"></div>
+      </section>
+    </div>
+
+    <aside class="rail">
+      <h2 class="rail-title">Lessons</h2>
+      <div class="course-list" id="course-list-home"></div>
+    </aside>
+  </div>
+</div>
+
+<!-- Interactive Lesson Viewer & Module Accordion -->
+<div id="view-lesson" class="hidden">
+  <div class="wrap lesson-wrap">
+    <button class="btn ghost small" onclick="showHome()">&#8592; Back to Home</button>
+    <div class="lesson-banner">
+      <div class="lesson-kicker" id="lesson-view-kicker">Lesson</div>
+      <h1 id="lesson-view-title">Loading Lesson...</h1>
+    </div>
+    <div id="lesson-modules-host"></div>
+  </div>
+</div>
+
+<!-- Sign Up View -->
+<div id="view-auth-signup" class="hidden">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-band" id="signup-band">Join Platform</div>
+      <div class="auth-body">
+        <input type="text" id="signup-name" placeholder="Full Name" required>
+        <input type="email" id="signup-email" placeholder="Email" required>
+        <input type="password" id="signup-password" placeholder="Password (8+ chars)" required>
+        <button class="btn cta" onclick="signup()">Create Account</button>
+        <p style="margin: 14px 0 0; text-align: center; font-size: .95rem; color: var(--primary);">
+          Already have an account? <a href="#" class="auth-link" onclick="showAuth('login'); return false;">Log in</a>
+        </p>
+        <p class="form-error" id="signup-error"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sign In View -->
+<div id="view-auth-login" class="hidden">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-band">Welcome Back</div>
+      <div class="auth-body">
+        <input type="email" id="login-email" placeholder="Email" required>
+        <input type="password" id="login-password" placeholder="Password" required>
+        <button class="btn cta" onclick="login()">Log In</button>
+        <p style="margin: 14px 0 0; text-align: center; font-size: .95rem; color: var(--primary);">
+          New here? <a href="#" class="auth-link" onclick="showAuth('signup'); return false;">Create an account</a> &middot; <a href="#" class="auth-link" onclick="showAuth('forgot'); return false;">Forgot your password?</a>
+        </p>
+        <p class="form-error" id="login-error"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Forgot Password View -->
+<div id="view-auth-forgot" class="hidden">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-band">Reset Password</div>
+      <div class="auth-body">
+        <p style="color: var(--slate); font-weight: 600; margin-bottom: 12px;">Enter your email to receive a password reset link.</p>
+        <input type="email" id="forgot-email" placeholder="Email" required>
+        <button class="btn cta" onclick="requestReset()">Send Link</button>
+        <p style="margin: 14px 0 0; text-align: center; font-size: .95rem; color: var(--primary);">
+          Remembered it? <a href="#" class="auth-link" onclick="showAuth('login'); return false;">Back to Log in</a>
+        </p>
+        <p class="form-error" id="forgot-error" style="color: var(--primary);"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- First-Time Member Welcome Popup -->
+<div id="welcome-member-modal" class="modal-overlay hidden" onclick="if(event.target===this)dismissWelcomeModal(false)">
+  <div class="modal-box" style="text-align: center;">
+    <h3 style="color: var(--primary); margin-bottom: 10px;">Welcome to <span id="welcome-site-name">the Community</span>!</h3>
+    <p style="color: #2b3a4a; line-height: 1.6; margin: 0 0 14px; font-size: .98rem;">
+      Your account is approved and ready. Whenever you want to update your display name or password, simply click your username pill in the top-right corner:
+    </p>
+    <div style="margin-bottom: 18px;">
+      <span class="pill-preview" id="welcome-pill-preview">Member 1</span>
+    </div>
+    <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+      <button class="btn ghost small" onclick="dismissWelcomeModal(false)">Got It</button>
+      <button class="btn cta small" onclick="dismissWelcomeModal(true)">Update Name / Password Now</button>
+    </div>
+  </div>
+</div>
+
+<!-- Change Name or Password Modal -->
+<div id="change-password-modal" class="modal-overlay hidden" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="modal-box" style="text-align: left;">
+    <h3 style="color: var(--primary);">Change Name or Password</h3>
+    <input type="password" id="cp-current" placeholder="Current Password">
+    <input type="text" id="cp-name" placeholder="New display name (leave blank to keep current)">
+    <input type="password" id="cp-new" placeholder="New Password (8+ characters)">
+    <input type="password" id="cp-new-confirm" placeholder="Confirm New Password">
+    <p id="cp-error" class="form-error"></p>
+    <div style="display:flex; gap:10px; justify-content:center; margin-top:16px;">
+      <button class="btn ghost small" onclick="document.getElementById('change-password-modal').classList.add('hidden')">Cancel</button>
+      <button class="btn cta small" onclick="changePassword()">Update</button>
+    </div>
+  </div>
+</div>
+
+<footer style="background: var(--primary); color: #fff; padding: 30px 0; margin-top: 60px; text-align: center; font-size: .9rem;">
+  <div class="wrap"><p id="footer-text">&copy; 2026 Platform. All rights reserved.</p></div>
+</footer>
+
+<script>
+let CMS_LESSONS_URL = '';
+let CMS_ITEMS = [];
+let LESSONS = [];
+let CURRENT_LESSON = null;
+const POLL_META = {};
+
+function formatDriveUrl(url) {
+  const raw = String(url || '').trim();
+  if (!raw) return '';
+  const match = raw.match(/\/d\/([a-zA-Z0-9_-]+)/) || raw.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    return 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w1200';
+  }
+  return raw;
+}
+
+function userHasPaidAccess() {
+  return localStorage.getItem('is_paid') === '1'
+    || localStorage.getItem('is_admin') === '1'
+    || localStorage.getItem('member_number') === '1';
+}
 
 function parseCSV(text) {
   const rows = [];
   let row = [];
   let token = '';
   let insideQuotes = false;
-
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
     const next = text[i + 1];
-
     if (c === '"') {
-      if (insideQuotes && next === '"') {
-        token += '"';
-        i++;
-      } else {
-        insideQuotes = !insideQuotes;
-      }
+      if (insideQuotes && next === '"') { token += '"'; i++; }
+      else { insideQuotes = !insideQuotes; }
     } else if (c === ',' && !insideQuotes) {
-      row.push(token);
-      token = '';
+      row.push(token); token = '';
     } else if ((c === '\r' || c === '\n') && !insideQuotes) {
       if (c === '\r' && next === '\n') i++;
-      row.push(token);
-      token = '';
-      if (row.length > 0 && row.some((cell) => cell.trim() !== '')) {
-        rows.push(row);
-      }
+      row.push(token); token = '';
+      if (row.length > 0 && row.some(cell => cell.trim())) rows.push(row);
       row = [];
     } else {
       token += c;
     }
   }
-  if (token !== '' || row.length > 0) {
+  if (token || row.length > 0) {
     row.push(token);
-    if (row.some((cell) => cell.trim() !== '')) {
-      rows.push(row);
-    }
+    if (row.some(cell => cell.trim())) rows.push(row);
   }
   return rows;
 }
 
-async function getTenantConfig(hostname, env) {
-  const now = Date.now();
-  if (!tenantCache.data || now > tenantCache.expiresAt) {
-    const res = await fetch(MASTER_CSV_URL, { cf: { cacheTtl: 30 } });
-    if (!res.ok) throw new Error('Failed to fetch Master Tenants Sheet');
-    const csvText = await res.text();
-    const rows = parseCSV(csvText);
+async function applySettings() {
+  try {
+    const res = await fetch('/api/config');
+    if (!res.ok) return;
+    const cfg = await res.json();
+    CMS_LESSONS_URL = cfg.cms_csv_url || '';
+    const s = cfg.settings || {};
 
-    const tenants = {};
-    for (let i = 1; i < rows.length; i++) {
-      const r = rows[i];
-      if (!r || r.length < 2) continue;
-      const domain = (r[0] || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-      if (!domain) continue;
+    const siteName   = s.site_name || 'Platform';
+    const tagline    = s.tagline || '';
+    const logoUrl    = s.logo_url || '';
+    const favUrl     = s.favicon_url || '';
+    const heroTitle  = s.hero_title || 'Your Legacy, Scaled by Design.';
+    const heroPoints = s.hero_points || '';
+    const primary    = s.primary_color || '#0B2545';
+    const accent     = s.accent_color || '#D4AF37';
+    const bg         = s.bg_color || '#F8F9FA';
 
-      tenants[domain] = {
-        domain,
-        db_binding: (r[1] || 'DB').trim(),
-        apps_script_url: (r[2] || '').trim(),
-        ams_sheet_url: (r[3] || '').trim(),
-        cms_sheet_url: (r[4] || '').trim(),
-        cms_csv_url: (r[5] || '').trim(),
-        settings: {
-          site_name: (r[6] || '').trim(),
-          tagline: (r[7] || '').trim(),
-          hero_title: (r[8] || '').trim(),
-          hero_points: (r[9] || '').trim(),
-          logo_url: (r[10] || '').trim(),
-          favicon_url: (r[11] || '').trim(),
-          primary_color: (r[12] || '').trim(),
-          accent_color: (r[13] || '').trim(),
-          bg_color: (r[14] || '').trim(),
-          support_email: (r[15] || '').trim(),
-        },
-      };
+    document.getElementById('site-name').innerText = siteName;
+    document.getElementById('tab-title').innerText = siteName;
+    document.getElementById('footer-text').innerHTML = `&copy; 2026 ${escapeHtml(siteName)}. All rights reserved.`;
+    document.getElementById('signup-band').innerText = 'Join ' + siteName;
+
+    const tagEl = document.getElementById('hero-tagline');
+    if (tagline) {
+      tagEl.innerText = tagline;
+      tagEl.classList.remove('hidden');
     }
-    tenantCache = { data: tenants, expiresAt: now + 60 * 1000 };
+
+    if (logoUrl) {
+      const logoEl = document.getElementById('site-logo');
+      logoEl.src = formatDriveUrl(logoUrl);
+      logoEl.classList.remove('hidden');
+    }
+    if (favUrl) {
+      document.getElementById('tab-favicon').href = formatDriveUrl(favUrl);
+    }
+    document.getElementById('hero-title').innerText = heroTitle;
+
+    const bulletEl = document.getElementById('hero-bullets');
+    if (heroPoints) {
+      const cleaned = heroPoints.replace(/[\r\n]+/g, ' ');
+      const bullets = cleaned.split('|').map(p => p.trim()).filter(Boolean);
+      bulletEl.innerHTML = bullets.map(b => `<li>${escapeHtml(b)}</li>`).join('');
+    }
+
+    const r = document.documentElement;
+    r.style.setProperty('--primary', primary);
+    r.style.setProperty('--accent', accent);
+    r.style.setProperty('--bg', bg);
+  } catch (err) {
+    console.error('Failed to load settings:', err);
   }
-
-  const cleanHost = hostname.toLowerCase().replace(/^www\./, '');
-  if (tenantCache.data[cleanHost]) return tenantCache.data[cleanHost];
-
-  const firstKey = Object.keys(tenantCache.data)[0];
-  return tenantCache.data[firstKey] || null;
 }
 
-function jsonResponse(obj, status = 200) {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
+function hideViews() {
+  ['view-home', 'view-lesson', 'view-auth-signup', 'view-auth-login', 'view-auth-forgot'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
   });
 }
 
-async function ensureSchema(db) {
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS settings (
-        key TEXT PRIMARY KEY,
-        value TEXT,
-        updated_at TEXT DEFAULT (datetime('now'))
-      )`
-    )
-    .run();
+function showHome() {
+  hideViews();
+  document.getElementById('view-home').classList.remove('hidden');
+  renderHeader();
+  renderLessons();
+  renderCommunity();
+  checkFirstTimeWelcome();
+}
 
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS answers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        member_number TEXT,
-        user_name TEXT,
-        user_email TEXT,
-        lesson_tab TEXT,
-        module TEXT,
-        lesson TEXT,
-        question TEXT,
-        answer TEXT,
-        created_at TEXT DEFAULT (datetime('now'))
-      )`
-    )
-    .run();
+function checkFirstTimeWelcome() {
+  const token = localStorage.getItem('token');
+  const email = (localStorage.getItem('user_email') || '').toLowerCase();
+  const status = localStorage.getItem('user_status') || 'Pending';
+  if (!token || !email || status !== 'Approved') return;
 
-  await db
-    .prepare(
-      `CREATE TABLE IF NOT EXISTS poll_votes (
-        user_id INTEGER,
-        poll_key TEXT,
-        choices TEXT,
-        updated_at TEXT DEFAULT (datetime('now')),
-        PRIMARY KEY (user_id, poll_key)
-      )`
-    )
-    .run();
+  const seenKey = 'welcomed_' + window.location.host + '_' + email;
+  if (localStorage.getItem(seenKey)) return;
 
-  const alters = [
-    'ALTER TABLE users ADD COLUMN member_number TEXT',
-    "ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'Pending'",
-    'ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0',
-    'ALTER TABLE users ADD COLUMN is_paid INTEGER DEFAULT 0',
-    'ALTER TABLE users ADD COLUMN auth_token TEXT',
-    'ALTER TABLE users ADD COLUMN session_count INTEGER DEFAULT 0',
-    'ALTER TABLE users ADD COLUMN click_count INTEGER DEFAULT 0',
-    'ALTER TABLE users ADD COLUMN last_active_at TEXT',
-    'ALTER TABLE users ADD COLUMN last_seen TEXT',
-  ];
-  for (const sql of alters) {
-    try {
-      await db.prepare(sql).run();
-    } catch (_) {}
+  const name = localStorage.getItem('user_name') || 'Member';
+  const num = localStorage.getItem('member_number') || '1';
+  const siteName = document.getElementById('site-name').innerText || 'the Community';
+
+  document.getElementById('welcome-site-name').innerText = siteName;
+  document.getElementById('welcome-pill-preview').innerText = `${name} ${num}`;
+  document.getElementById('welcome-member-modal').classList.remove('hidden');
+}
+
+function dismissWelcomeModal(openProfileModal) {
+  const email = (localStorage.getItem('user_email') || '').toLowerCase();
+  if (email) {
+    localStorage.setItem('welcomed_' + window.location.host + '_' + email, '1');
+  }
+  document.getElementById('welcome-member-modal').classList.add('hidden');
+  if (openProfileModal) {
+    document.getElementById('change-password-modal').classList.remove('hidden');
   }
 }
 
-async function getAuthUser(request, db) {
-  const auth = request.headers.get('Authorization') || '';
-  const token = auth.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return null;
-  return await db.prepare('SELECT * FROM users WHERE auth_token = ?').bind(token).first();
+function showAuth(type) {
+  hideViews();
+  if (type === 'signup') document.getElementById('view-auth-signup').classList.remove('hidden');
+  else if (type === 'forgot') document.getElementById('view-auth-forgot').classList.remove('hidden');
+  else document.getElementById('view-auth-login').classList.remove('hidden');
 }
 
-function generateToken() {
-  return crypto.randomUUID() + '-' + crypto.randomUUID();
-}
-
-function extractPollCounts(rows) {
-  const counts = {};
-  let totalVoters = 0;
-  for (const row of rows) {
-    let arr = [];
-    try {
-      arr = JSON.parse(row.choices || '[]');
-    } catch (_) {
-      arr = row.choices ? [row.choices] : [];
-    }
-    if (Array.isArray(arr) && arr.length > 0) {
-      totalVoters++;
-      for (const opt of arr) {
-        counts[opt] = (counts[opt] || 0) + 1;
-      }
-    }
+function logout() {
+  const hostPrefix = 'welcomed_' + window.location.host + '_';
+  const preserved = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(hostPrefix)) preserved[k] = localStorage.getItem(k);
   }
-  return { counts, totalVoters };
+  localStorage.clear();
+  Object.entries(preserved).forEach(([k, v]) => localStorage.setItem(k, v));
+  showHome();
 }
 
-export default {
-  async fetch(request, env, ctx) {
-    if (request.method === 'OPTIONS') {
-      return jsonResponse({ ok: true }, 204);
+function renderHeader() {
+  const host = document.getElementById('head-actions');
+  const token = localStorage.getItem('token');
+  const name = localStorage.getItem('user_name') || 'Member';
+  const num = localStorage.getItem('member_number') || '1';
+  const isAdmin = localStorage.getItem('is_admin') === '1' || num === '1';
+
+  if (token) {
+    const adminLink = isAdmin ? `<a href="/admin.html" class="btn small ghost" style="text-decoration:none;">Admin</a>` : '';
+    host.innerHTML = `
+      <div style="display:flex; align-items:center; gap:8px;">
+        ${adminLink}
+        <span class="name-chip" onclick="document.getElementById('change-password-modal').classList.remove('hidden')">${escapeHtml(name)} ${escapeHtml(num)}</span>
+        <button class="btn small ghost" onclick="logout()">Log out</button>
+      </div>
+    `;
+  } else {
+    host.innerHTML = `
+      <button class="btn small cta" onclick="showAuth('signup')">Sign Up</button>
+      <button class="btn small ghost" style="margin-left: 6px;" onclick="showAuth('login')">Log In</button>
+    `;
+  }
+}
+
+// ============================================================================
+// CMS PARSER (11-Column Schema: Lesson, Module, Item #, Name, Active, Paid, Type, Title, Content, Extra1, Extra2)
+// ============================================================================
+
+async function renderLessons() {
+  const host = document.getElementById('course-list-home');
+  if (!CMS_LESSONS_URL) {
+    host.innerHTML = '<p class="community-sub" style="text-align: center; margin-top: 10px;">No lessons configured yet.</p>';
+    return;
+  }
+  try {
+    const res = await fetch(CMS_LESSONS_URL);
+    const csv = await res.text();
+    const rows = parseCSV(csv);
+    if (rows.length < 2) {
+      host.innerHTML = '<p class="community-sub" style="text-align: center; margin-top: 10px;">No lessons found in CMS.</p>';
+      return;
     }
 
-    const url = new URL(request.url);
-    const path = url.pathname;
+    const headers = rows[0].map(h => String(h || '').trim().toLowerCase());
+    const col = (names, fallback) => {
+      for (const n of names) {
+        const idx = headers.indexOf(n);
+        if (idx !== -1) return idx;
+      }
+      return fallback;
+    };
 
-    if (!path.startsWith('/api/')) {
-      return env.ASSETS.fetch(request);
+    const iLesson  = col(['lesson', 'lesson #', 'lesson number'], 0);
+    const iModule  = col(['module', 'module #', 'module number'], 1);
+    const iItem    = col(['item #', 'item', 'order'], 2);
+    const iName    = col(['name', 'module name', 'lesson name'], 3);
+    const iActive  = col(['active'], 4);
+    const iPaid    = col(['paid', 'access'], 5);
+    const iType    = col(['type'], 6);
+    const iTitle   = col(['title'], 7);
+    const iContent = col(['content'], 8);
+    const iExtra1  = col(['extra1', 'extra 1'], 9);
+    const iExtra2  = col(['extra2', 'extra 2'], 10);
+
+    CMS_ITEMS = [];
+    for (let rIdx = 1; rIdx < rows.length; rIdx++) {
+      const r = rows[rIdx];
+      const lessonId = String(r[iLesson] || '').trim();
+      const activeVal = String(r[iActive] || '').trim().toLowerCase();
+      if (!lessonId || activeVal !== 'yes') continue;
+
+      CMS_ITEMS.push({
+        rowOrder: rIdx,
+        lesson: lessonId,
+        module: String(r[iModule] || '1').trim() || '1',
+        itemNum: parseFloat(String(r[iItem] || '').trim()) || rIdx,
+        name: String(r[iName] || '').trim(),
+        paid: String(r[iPaid] || '').trim().toLowerCase() === 'paid',
+        type: String(r[iType] || 'text').trim().toLowerCase(),
+        title: String(r[iTitle] || '').trim(),
+        content: String(r[iContent] || '').trim(),
+        extra1: String(r[iExtra1] || '').trim(),
+        extra2: String(r[iExtra2] || '').trim()
+      });
     }
 
-    try {
-      const tenant = await getTenantConfig(url.hostname, env);
-      if (!tenant) {
-        return jsonResponse({ error: 'Tenant configuration not found for ' + url.hostname }, 404);
-      }
+    CMS_ITEMS.sort((a, b) => a.itemNum - b.itemNum || a.rowOrder - b.rowOrder);
 
-      const db = env[tenant.db_binding];
-      if (!db) {
-        return jsonResponse({ error: `D1 binding "${tenant.db_binding}" is not configured on Worker.` }, 500);
-      }
-
-      await ensureSchema(db);
-
-      // 1. GET /api/config
-      if (path === '/api/config' && request.method === 'GET') {
-        const dbRows = await db.prepare('SELECT key, value FROM settings').all();
-        const dbSettings = {};
-        for (const row of dbRows.results || []) {
-          dbSettings[row.key] = row.value;
-        }
-
-        const mergedSettings = {
-          site_name: dbSettings.site_name || tenant.settings.site_name || 'Platform',
-          tagline: dbSettings.tagline || tenant.settings.tagline || '',
-          hero_title: dbSettings.hero_title || tenant.settings.hero_title || 'Your Legacy, Scaled by Design.',
-          hero_points: dbSettings.hero_points || tenant.settings.hero_points || '',
-          logo_url: dbSettings.logo_url || tenant.settings.logo_url || '',
-          favicon_url: dbSettings.favicon_url || tenant.settings.favicon_url || '',
-          primary_color: dbSettings.primary_color || tenant.settings.primary_color || '#0B2545',
-          accent_color: dbSettings.accent_color || tenant.settings.accent_color || '#D4AF37',
-          bg_color: dbSettings.bg_color || tenant.settings.bg_color || '#F8F9FA',
-          support_email: dbSettings.support_email || tenant.settings.support_email || '',
-        };
-
-        return jsonResponse({
-          domain: tenant.domain,
-          cms_csv_url: tenant.cms_csv_url,
-          settings: mergedSettings,
+    const lessonMap = new Map();
+    for (const item of CMS_ITEMS) {
+      if (!lessonMap.has(item.lesson)) {
+        lessonMap.set(item.lesson, {
+          id: item.lesson,
+          name: item.name || ('Lesson ' + item.lesson)
         });
       }
-
-      // 2. POST /api/signup
-      if (path === '/api/signup' && request.method === 'POST') {
-        const body = await request.json();
-        const name = (body.name || '').trim();
-        const email = (body.email || '').trim().toLowerCase();
-        const password = body.password || '';
-
-        if (!name || !email || !password) {
-          return jsonResponse({ error: 'Name, email, and password are required.' }, 400);
-        }
-
-        const existing = await db.prepare('SELECT id FROM users WHERE lower(email) = ?').bind(email).first();
-        if (existing) {
-          return jsonResponse({ error: 'An account with this email already exists.' }, 409);
-        }
-
-        const countRow = await db.prepare('SELECT COUNT(*) as cnt FROM users').first();
-        const nextNum = String((countRow?.cnt || 0) + 1);
-        const isFirstUser = nextNum === '1';
-        const status = isFirstUser ? 'Approved' : 'Pending';
-        const isAdmin = isFirstUser ? 1 : 0;
-        const token = generateToken();
-        const nowIso = new Date().toISOString();
-
-        await db
-          .prepare(
-            `INSERT INTO users (member_number, name, email, password, status, is_admin, is_paid, auth_token, session_count, click_count, last_active_at, created_at, last_seen)
-             VALUES (?, ?, ?, ?, ?, ?, 0, ?, 1, 0, ?, ?, ?)`
-          )
-          .bind(nextNum, name, email, password, status, isAdmin, token, nowIso, nowIso, nowIso)
-          .run();
-
-        return jsonResponse({
-          token,
-          name,
-          email,
-          member_number: nextNum,
-          status,
-          is_admin: isAdmin,
-          is_paid: 0,
-        });
-      }
-
-      // 3. POST /api/login
-      if (path === '/api/login' && request.method === 'POST') {
-        const body = await request.json();
-        const email = (body.email || '').trim().toLowerCase();
-        const password = body.password || '';
-
-        const user = await db.prepare('SELECT * FROM users WHERE lower(email) = ?').bind(email).first();
-        if (!user || (user.password !== password && password !== email)) {
-          return jsonResponse({ error: 'Invalid email or password.' }, 401);
-        }
-
-        const token = generateToken();
-        const nowIso = new Date().toISOString();
-        const newSessions = (user.session_count || 0) + 1;
-        await db
-          .prepare('UPDATE users SET auth_token = ?, session_count = ?, last_active_at = ?, last_seen = ? WHERE id = ?')
-          .bind(token, newSessions, nowIso, nowIso, user.id)
-          .run();
-
-        return jsonResponse({
-          token,
-          name: user.name,
-          email: user.email,
-          member_number: user.member_number || String(user.id),
-          status: user.status || 'Approved',
-          is_admin: user.is_admin || (user.member_number === '1' ? 1 : 0),
-          is_paid: user.is_paid || 0,
-        });
-      }
-
-      // 4. GET /api/heartbeat
-      if (path === '/api/heartbeat' && request.method === 'GET') {
-        const user = await getAuthUser(request, db);
-        if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
-        const nowIso = new Date().toISOString();
-        await db.prepare('UPDATE users SET last_seen = ? WHERE id = ?').bind(nowIso, user.id).run();
-        return jsonResponse({ ok: true });
-      }
-
-      // 4b. POST /api/activity
-      if (path === '/api/activity' && request.method === 'POST') {
-        const body = await request.json().catch(() => ({}));
-        const auth = request.headers.get('Authorization') || '';
-        const token = (auth.replace(/^Bearer\s+/i, '').trim()) || (body.token || '').trim();
-        if (!token) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-        const user = await db.prepare('SELECT * FROM users WHERE auth_token = ?').bind(token).first();
-        if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-        const clicksToAdd = Math.max(0, Math.min(500, parseInt(body.clicks, 10) || 0));
-        const nowMs = Date.now();
-        const nowIso = new Date(nowMs).toISOString();
-        const lastActiveMs = user.last_active_at ? Date.parse(user.last_active_at) : 0;
-        const isNewSession = !lastActiveMs || nowMs - lastActiveMs > 30 * 60 * 1000;
-
-        const updatedSessions = (user.session_count || 0) + (isNewSession ? 1 : 0);
-        const updatedClicks = (user.click_count || 0) + clicksToAdd;
-
-        await db
-          .prepare('UPDATE users SET session_count = ?, click_count = ?, last_active_at = ?, last_seen = ? WHERE id = ?')
-          .bind(updatedSessions, updatedClicks, nowIso, nowIso, user.id)
-          .run();
-
-        return jsonResponse({ ok: true, session_count: updatedSessions, click_count: updatedClicks });
-      }
-
-      // 5. POST /api/change-password
-      if (path === '/api/change-password' && request.method === 'POST') {
-        const user = await getAuthUser(request, db);
-        if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-        const body = await request.json();
-        if (user.password !== body.currentPassword && body.currentPassword !== user.email) {
-          return jsonResponse({ error: 'Current password is incorrect.' }, 400);
-        }
-
-        const newName = (body.newName || '').trim() || user.name;
-        const newPassword = body.newPassword || user.password;
-
-        await db
-          .prepare('UPDATE users SET name = ?, password = ? WHERE id = ?')
-          .bind(newName, newPassword, user.id)
-          .run();
-
-        return jsonResponse({ success: true, name: newName });
-      }
-
-      // 6. POST /api/forgot-password
-      if (path === '/api/forgot-password' && request.method === 'POST') {
-        return jsonResponse({ ok: true });
-      }
-
-      // 7. GET & POST /api/posts
-      if (path === '/api/posts') {
-        const user = await getAuthUser(request, db);
-        if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-        if (request.method === 'GET') {
-          const rows = await db.prepare('SELECT * FROM posts ORDER BY id DESC LIMIT 100').all();
-          return jsonResponse(rows.results || []);
-        }
-
-        if (request.method === 'POST') {
-          const body = await request.json();
-          const content = (body.content || '').trim();
-          if (!content) return jsonResponse({ error: 'Post cannot be empty.' }, 400);
-
-          await db
-            .prepare('INSERT INTO posts (user_id, user_name, content, created_at) VALUES (?, ?, ?, ?)')
-            .bind(user.id, user.name, content, new Date().toISOString())
-            .run();
-
-          return jsonResponse({ ok: true });
-        }
-      }
-
-      // 8. POST /api/answers
-      if (path === '/api/answers' && request.method === 'POST') {
-        const user = await getAuthUser(request, db);
-        if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-        const body = await request.json();
-        const lessonTab = (body.lesson_tab || 'Answers').trim();
-        const moduleName = (body.module || '').trim();
-        const lessonName = (body.lesson || '').trim();
-        const question = (body.question || '').trim();
-        const answer = (body.answer || '').trim();
-
-        await db
-          .prepare(
-            `INSERT INTO answers (user_id, member_number, user_name, user_email, lesson_tab, module, lesson, question, answer)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-          )
-          .bind(
-            user.id,
-            user.member_number || String(user.id),
-            user.name,
-            user.email,
-            lessonTab,
-            moduleName,
-            lessonName,
-            question,
-            answer
-          )
-          .run();
-
-        if (tenant.apps_script_url && tenant.ams_sheet_url) {
-          ctx.waitUntil(
-            fetch(tenant.apps_script_url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                action: 'save_answer',
-                sheetUrl: tenant.ams_sheet_url,
-                lesson_tab: lessonTab,
-                member_number: user.member_number || String(user.id),
-                name: user.name,
-                email: user.email,
-                module: moduleName,
-                lesson: lessonName,
-                question,
-                answer,
-              }),
-            }).catch(() => {})
-          );
-        }
-
-        return jsonResponse({ ok: true });
-      }
-
-      // 8b. GET /api/poll-results?poll_key=...
-      if (path === '/api/poll-results' && request.method === 'GET') {
-        const user = await getAuthUser(request, db);
-        if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-        const pollKey = (url.searchParams.get('poll_key') || '').trim();
-        if (!pollKey) return jsonResponse({ error: 'Missing poll_key' }, 400);
-
-        const allVotes = await db.prepare('SELECT user_id, choices FROM poll_votes WHERE poll_key = ?').bind(pollKey).all();
-        const rows = allVotes.results || [];
-        const { counts, totalVoters } = extractPollCounts(rows);
-
-        const myRow = rows.find((r) => r.user_id === user.id);
-        let userChoices = [];
-        if (myRow) {
-          try {
-            userChoices = JSON.parse(myRow.choices || '[]');
-          } catch (_) {
-            userChoices = myRow.choices ? [myRow.choices] : [];
-          }
-        }
-
-        return jsonResponse({
-          ok: true,
-          voted: userChoices.length > 0,
-          userChoices,
-          counts,
-          totalVoters,
-        });
-      }
-
-      // 8c. POST /api/poll-vote (Allows changing response anytime; updates existing vote)
-      if (path === '/api/poll-vote' && request.method === 'POST') {
-        const user = await getAuthUser(request, db);
-        if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
-
-        const body = await request.json();
-        const pollKey = (body.poll_key || '').trim();
-        const choices = Array.isArray(body.choices) ? body.choices.map((c) => String(c).trim()).filter(Boolean) : [];
-        if (!pollKey || choices.length === 0) {
-          return jsonResponse({ error: 'Please select at least one option.' }, 400);
-        }
-
-        await db
-          .prepare(
-            `INSERT INTO poll_votes (user_id, poll_key, choices, updated_at)
-             VALUES (?, ?, ?, ?)
-             ON CONFLICT(user_id, poll_key) DO UPDATE SET choices = excluded.choices, updated_at = excluded.updated_at`
-          )
-          .bind(user.id, pollKey, JSON.stringify(choices), new Date().toISOString())
-          .run();
-
-        const allVotes = await db.prepare('SELECT user_id, choices FROM poll_votes WHERE poll_key = ?').bind(pollKey).all();
-        const { counts, totalVoters } = extractPollCounts(allVotes.results || []);
-
-        if (tenant.apps_script_url && tenant.ams_sheet_url) {
-          ctx.waitUntil(
-            fetch(tenant.apps_script_url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                action: 'save_answer',
-                sheetUrl: tenant.ams_sheet_url,
-                lesson_tab: (body.lesson_tab || 'Answers').trim(),
-                member_number: user.member_number || String(user.id),
-                name: user.name,
-                email: user.email,
-                module: (body.module || '').trim(),
-                lesson: (body.lesson || '').trim(),
-                question: '[Poll] ' + (body.question || '').trim(),
-                answer: choices.join(', '),
-              }),
-            }).catch(() => {})
-          );
-        }
-
-        return jsonResponse({
-          ok: true,
-          voted: true,
-          userChoices: choices,
-          counts,
-          totalVoters,
-        });
-      }
-
-      // ======================================================================
-      // ADMIN ROUTES
-      // ======================================================================
-      const adminUser = await getAuthUser(request, db);
-      const isAdmin = adminUser && (adminUser.is_admin === 1 || adminUser.member_number === '1');
-      if (!isAdmin) {
-        return jsonResponse({ error: 'Admin access required.' }, 403);
-      }
-
-      if (path === '/api/admin/users' && request.method === 'GET') {
-        const usersRes = await db
-          .prepare(
-            `SELECT u.*,
-              (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) AS post_count,
-              (SELECT COUNT(DISTINCT lesson_tab) FROM answers a WHERE a.user_id = u.id) AS lessons_done,
-              (SELECT COUNT(DISTINCT module) FROM answers a WHERE a.user_id = u.id AND a.module != '') AS modules_done
-             FROM users u
-             ORDER BY CAST(u.member_number AS INTEGER) ASC, u.id ASC`
-          )
-          .all();
-
-        const postsCount = await db.prepare('SELECT COUNT(*) as cnt FROM posts').first();
-
-        return jsonResponse({
-          users: usersRes.results || [],
-          total_posts: postsCount?.cnt || 0,
-          open_reports: 0,
-        });
-      }
-
-      if (path === '/api/admin/user-status' && request.method === 'POST') {
-        const body = await request.json();
-        await db.prepare('UPDATE users SET status = ? WHERE id = ?').bind(body.status, body.userId).run();
-        return jsonResponse({ ok: true });
-      }
-
-      if (path === '/api/admin/user-paid' && request.method === 'POST') {
-        const body = await request.json();
-        await db.prepare('UPDATE users SET is_paid = ? WHERE id = ?').bind(body.is_paid ? 1 : 0, body.userId).run();
-        return jsonResponse({ ok: true });
-      }
-
-      if (path === '/api/admin/user-admin' && request.method === 'POST') {
-        const body = await request.json();
-        await db.prepare('UPDATE users SET is_admin = ? WHERE id = ?').bind(body.is_admin ? 1 : 0, body.userId).run();
-        return jsonResponse({ ok: true });
-      }
-
-      if (path === '/api/admin/reset-password' && request.method === 'POST') {
-        const body = await request.json();
-        const target = await db.prepare('SELECT email FROM users WHERE id = ?').bind(body.userId).first();
-        if (!target) return jsonResponse({ error: 'User not found' }, 404);
-        await db.prepare('UPDATE users SET password = ? WHERE id = ?').bind(target.email, body.userId).run();
-        return jsonResponse({ ok: true });
-      }
-
-      if (path === '/api/admin/sync-members' && request.method === 'POST') {
-        if (!tenant.apps_script_url || !tenant.ams_sheet_url) {
-          return jsonResponse({ error: 'Apps Script URL or AMS Sheet URL is missing in Master Tenants Sheet.' }, 400);
-        }
-
-        const usersRes = await db
-          .prepare(
-            `SELECT u.member_number, u.name, u.email, u.status, u.is_paid, u.is_admin,
-              u.session_count, u.click_count, u.created_at, u.last_seen,
-              (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) AS post_count,
-              (SELECT COUNT(DISTINCT lesson_tab) FROM answers a WHERE a.user_id = u.id) AS lessons_done,
-              (SELECT COUNT(DISTINCT module) FROM answers a WHERE a.user_id = u.id AND a.module != '') AS modules_done
-             FROM users u
-             ORDER BY CAST(u.member_number AS INTEGER) ASC, u.id ASC`
-          )
-          .all();
-
-        const scriptRes = await fetch(tenant.apps_script_url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'sync_members',
-            sheetUrl: tenant.ams_sheet_url,
-            members: usersRes.results || [],
-          }),
-        });
-
-        const scriptJson = await scriptRes.json();
-        return jsonResponse(scriptJson);
-      }
-
-      if (path === '/api/admin/settings' && request.method === 'POST') {
-        const body = await request.json();
-        const allowedKeys = [
-          'site_name',
-          'tagline',
-          'hero_title',
-          'hero_points',
-          'logo_url',
-          'favicon_url',
-          'primary_color',
-          'accent_color',
-          'bg_color',
-          'support_email',
-        ];
-
-        for (const key of allowedKeys) {
-          if (body[key] !== undefined) {
-            await db
-              .prepare(
-                `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
-                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
-              )
-              .bind(key, String(body[key]))
-              .run();
-          }
-        }
-
-        tenantCache.expiresAt = 0;
-
-        if (tenant.apps_script_url) {
-          ctx.waitUntil(
-            fetch(tenant.apps_script_url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                action: 'sync_settings',
-                domain: tenant.domain,
-                settings: body,
-              }),
-            }).catch(() => {})
-          );
-        }
-
-        return jsonResponse({ ok: true });
-      }
-
-      return jsonResponse({ error: 'Not found' }, 404);
-    } catch (err) {
-      return jsonResponse({ error: err.message || 'Server error' }, 500);
     }
-  },
-};
+
+    LESSONS = Array.from(lessonMap.values());
+    if (LESSONS.length === 0) {
+      host.innerHTML = '<p class="community-sub" style="text-align: center; margin-top: 10px;">No active lessons right now.</p>';
+      return;
+    }
+
+    host.innerHTML = LESSONS.map((l, idx) => `
+      <div class="course" style="background: linear-gradient(135deg, var(--primary), var(--accent))">
+        <h3>${escapeHtml(l.name)}</h3>
+        <button class="course-btn" onclick="openLesson(${idx})">Enter Lesson ${escapeHtml(l.id)}</button>
+      </div>`).join('');
+  } catch (e) {
+    host.innerHTML = '<p style="color: red;">Failed to load lessons.</p>';
+  }
+}
+
+function openLesson(idx) {
+  const lesson = LESSONS[idx];
+  if (!lesson) return;
+
+  const token = localStorage.getItem('token');
+  if (!token) {
+    showAuth('login');
+    return;
+  }
+
+  const status = localStorage.getItem('user_status') || 'Approved';
+  const isAdmin = localStorage.getItem('is_admin') === '1' || localStorage.getItem('member_number') === '1';
+  if (status !== 'Approved' && !isAdmin) {
+    alert('Your account is currently pending approval. Once approved by the administrator, all lessons will unlock.');
+    return;
+  }
+
+  CURRENT_LESSON = lesson;
+  hideViews();
+  document.getElementById('view-lesson').classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  document.getElementById('lesson-view-kicker').innerText = 'Lesson ' + lesson.id;
+  document.getElementById('lesson-view-title').innerText = lesson.name;
+
+  const items = CMS_ITEMS.filter(it => it.lesson === lesson.id);
+  const modMap = new Map();
+
+  for (const it of items) {
+    if (!modMap.has(it.module)) {
+      modMap.set(it.module, {
+        id: it.module,
+        name: it.name || ('Module ' + it.module),
+        items: []
+      });
+    } else if (!modMap.get(it.module).name && it.name) {
+      modMap.get(it.module).name = it.name;
+    }
+    modMap.get(it.module).items.push(it);
+  }
+
+  const modules = Array.from(modMap.values());
+  const host = document.getElementById('lesson-modules-host');
+
+  if (modules.length === 0) {
+    host.innerHTML = '<div class="card" style="padding:24px;"><p class="community-sub" style="margin:0;">No active modules in this lesson yet.</p></div>';
+    return;
+  }
+
+  Object.keys(POLL_META).forEach(k => delete POLL_META[k]);
+
+  host.innerHTML = modules.map((mod, mIdx) => {
+    const blocksHtml = mod.items.map((item, bIdx) => renderCmsBlock(item, mIdx, bIdx)).join('');
+    return `
+      <div class="mod-card ${mIdx === 0 ? 'open' : ''}" id="mod-card-${mIdx}">
+        <div class="mod-head" onclick="toggleModule(${mIdx})">
+          <div class="mod-title">Module ${escapeHtml(mod.id)}: ${escapeHtml(mod.name)}</div>
+          <span class="mod-chevron">&#9660;</span>
+        </div>
+        <div class="mod-body">
+          ${blocksHtml}
+        </div>
+      </div>`;
+  }).join('');
+
+  // Load existing poll results if the current user has already voted
+  Object.keys(POLL_META).forEach(uid => loadExistingPollResults(uid));
+}
+
+function renderCmsBlock(item, mIdx, bIdx) {
+  const uid = `${mIdx}-${bIdx}`;
+  const isLocked = item.paid && !userHasPaidAccess();
+  const paidBadge = item.paid ? `<span class="paid-pill">Paid</span>` : '';
+  const headingHtml = item.title
+    ? `<div class="cms-head-row"><h4 class="cms-title">${escapeHtml(item.title)}</h4>${paidBadge}</div>`
+    : (item.paid ? `<div class="cms-head-row">${paidBadge}</div>` : '');
+
+  // 1. text / title
+  if (item.type === 'text' || item.type === 'title') {
+    return `
+      <div class="cms-block">
+        ${headingHtml}
+        ${item.content ? `<div class="cms-text">${escapeHtml(item.content)}</div>` : ''}
+      </div>`;
+  }
+
+  // 2. bullets / numbers
+  if (item.type === 'bullets' || item.type === 'numbers') {
+    const tag = item.type === 'numbers' ? 'ol' : 'ul';
+    const parts = item.content.split('|').map(s => s.trim()).filter(Boolean);
+    return `
+      <div class="cms-block">
+        ${headingHtml}
+        <${tag} class="cms-list">${parts.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</${tag}>
+      </div>`;
+  }
+
+  // 3. expandable
+  if (item.type === 'expandable') {
+    const bullets = item.content.split('|').map(s => s.trim()).filter(Boolean);
+    const imgUrl = formatDriveUrl(item.extra2);
+    return `
+      <div class="cms-block">
+        <div class="exp-box" id="exp-${uid}">
+          <div class="exp-head" onclick="document.getElementById('exp-${uid}').classList.toggle('open')">
+            <span>${escapeHtml(item.title || 'Details')} ${paidBadge}</span>
+            <span class="exp-arrow">&#9660;</span>
+          </div>
+          <div class="exp-body">
+            ${bullets.length ? `<ul class="cms-list">${bullets.map(b => `<li>${escapeHtml(b)}</li>`).join('')}</ul>` : ''}
+            ${imgUrl ? `<div class="cms-img-wrap"><img class="cms-img" src="${escapeHtml(imgUrl)}" alt="${escapeHtml(item.title)}"></div>` : ''}
+            ${item.extra1 ? `
+              <button type="button" class="nested-toggle" onclick="document.getElementById('nest-${uid}').classList.toggle('open')">+ More information</button>
+              <div class="nested-body" id="nest-${uid}">${escapeHtml(item.extra1)}</div>
+            ` : ''}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // 4. answer (Text box)
+  if (item.type === 'answer') {
+    return `
+      <div class="cms-block">
+        <div class="interactive-card">
+          ${headingHtml}
+          ${item.content ? `<div class="prompt-label" id="ans-q-${uid}">${escapeHtml(item.content)}</div>` : `<div class="hidden" id="ans-q-${uid}">${escapeHtml(item.title)}</div>`}
+          ${isLocked ? `
+            <div class="locked-notice">Paid Members Only — Upgrade your membership to submit answers and receive feedback.</div>
+          ` : `
+            <textarea class="answer-input" id="ans-in-${uid}" placeholder="${escapeHtml(item.extra1 || 'Write your answer here...')}"></textarea>
+            <div class="action-row">
+              <button class="btn cta small" id="ans-btn-${uid}" onclick="submitLessonAnswer(${mIdx}, ${bIdx})">Submit Answer</button>
+              <span class="action-status" id="ans-st-${uid}"></span>
+            </div>
+          `}
+        </div>
+      </div>`;
+  }
+
+  // 5. poll (Voting with live bar chart after submission + editable anytime)
+  if (item.type === 'poll') {
+    const opts = item.extra1.split('|').map(s => s.trim()).filter(Boolean);
+    const isMulti = item.extra2.toLowerCase() === 'multi';
+    const inputType = isMulti ? 'checkbox' : 'radio';
+    const qTitle = item.title || item.content || 'Poll';
+    const pollKey = `L${item.lesson}-M${item.module}-${qTitle}`;
+
+    if (!isLocked) {
+      POLL_META[uid] = { pollKey, options: opts, question: qTitle };
+    }
+
+    return `
+      <div class="cms-block">
+        <div class="interactive-card">
+          ${headingHtml}
+          ${item.content ? `<div class="prompt-label">${escapeHtml(item.content)}</div>` : ''}
+          ${isLocked ? `
+            <div class="locked-notice">Paid Members Only — Upgrade your membership to participate in polls.</div>
+          ` : `
+            <div class="poll-opts" id="poll-opts-${uid}">
+              ${opts.map(opt => `
+                <label class="poll-opt">
+                  <input type="${inputType}" name="poll-${uid}" value="${escapeHtml(opt)}">
+                  <span>${escapeHtml(opt)}</span>
+                </label>
+              `).join('')}
+            </div>
+            <div class="action-row">
+              <button class="btn cta small" id="poll-btn-${uid}" onclick="submitPollVote(${mIdx}, ${bIdx})">Submit Vote</button>
+              <span class="action-status" id="poll-st-${uid}"></span>
+            </div>
+            <div class="poll-results-wrap hidden" id="poll-res-${uid}"></div>
+          `}
+        </div>
+      </div>`;
+  }
+
+  // 6. link (External button for YouTube, Vimeo, or downloads)
+  if (item.type === 'link') {
+    const btnLabel = item.extra1 || 'Open Link';
+    return `
+      <div class="cms-block">
+        ${headingHtml}
+        ${item.extra2 ? `<div class="cms-text" style="margin-bottom: 10px;">${escapeHtml(item.extra2)}</div>` : ''}
+        ${isLocked ? `
+          <div class="locked-notice">Paid Members Only — Upgrade your membership to unlock this resource.</div>
+        ` : (item.content ? `
+          <a class="btn cta small" href="${escapeHtml(item.content)}" target="_blank" rel="noopener noreferrer">${escapeHtml(btnLabel)} &#8599;</a>
+        ` : '')}
+      </div>`;
+  }
+
+  // 7. image (Standalone picture from Google Drive or URL)
+  if (item.type === 'image') {
+    const imgUrl = formatDriveUrl(item.extra2 || item.content);
+    return `
+      <div class="cms-block">
+        ${headingHtml}
+        ${item.content && item.extra2 ? `<div class="cms-text">${escapeHtml(item.content)}</div>` : ''}
+        ${imgUrl ? `
+          <div class="cms-img-wrap">
+            <img class="cms-img" src="${escapeHtml(imgUrl)}" alt="${escapeHtml(item.title || 'Lesson Image')}">
+            ${item.extra1 ? `<div class="cms-caption">${escapeHtml(item.extra1)}</div>` : ''}
+          </div>
+        ` : ''}
+      </div>`;
+  }
+
+  return '';
+}
+
+function renderPollBars(uid, data) {
+  const meta = POLL_META[uid];
+  const host = document.getElementById('poll-res-' + uid);
+  const btn = document.getElementById('poll-btn-' + uid);
+  if (!meta || !host || !data || !data.voted) return;
+
+  // Pre-select the member's saved choices so they can edit anytime
+  if (Array.isArray(data.userChoices)) {
+    const inputs = document.querySelectorAll(`input[name="poll-${uid}"]`);
+    inputs.forEach(inp => {
+      inp.checked = data.userChoices.includes(inp.value);
+    });
+  }
+
+  if (btn) btn.innerText = 'Update Vote';
+
+  const counts = data.counts || {};
+  const maxCount = Math.max(1, ...meta.options.map(o => counts[o] || 0));
+
+  host.innerHTML = `
+    <div class="poll-results-head">How members answered so far</div>
+    ${meta.options.map(opt => {
+      const c = counts[opt] || 0;
+      const pct = c > 0 ? Math.round((c / maxCount) * 100) : 0;
+      return `
+        <div class="poll-res-row">
+          <div class="poll-res-label">${escapeHtml(opt)}</div>
+          <div class="poll-res-track">
+            <div class="poll-res-fill" style="width: ${pct}%;"></div>
+          </div>
+          <div class="poll-res-count">${c}</div>
+        </div>`;
+    }).join('')}
+  `;
+  host.classList.remove('hidden');
+}
+
+async function loadExistingPollResults(uid) {
+  const meta = POLL_META[uid];
+  if (!meta) return;
+  try {
+    const res = await fetch('/api/poll-results?poll_key=' + encodeURIComponent(meta.pollKey), {
+      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+    });
+    const data = await res.json();
+    if (res.ok && data.voted) {
+      renderPollBars(uid, data);
+    }
+  } catch (_) {}
+}
+
+function toggleModule(mIdx) {
+  const card = document.getElementById('mod-card-' + mIdx);
+  if (card) card.classList.toggle('open');
+}
+
+async function submitLessonAnswer(mIdx, bIdx) {
+  const uid = `${mIdx}-${bIdx}`;
+  const input = document.getElementById('ans-in-' + uid);
+  const statusEl = document.getElementById('ans-st-' + uid);
+  const btn = document.getElementById('ans-btn-' + uid);
+  const qEl = document.getElementById('ans-q-' + uid);
+  const modCard = document.getElementById('mod-card-' + mIdx);
+
+  const answerText = (input ? input.value : '').trim();
+  if (!answerText) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.innerText = 'Please enter an answer first.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = 'Saving...';
+  statusEl.innerText = '';
+
+  const modTitle = modCard ? modCard.querySelector('.mod-title').innerText : '';
+  const questionText = qEl ? qEl.innerText : '';
+  const lessonTab = CURRENT_LESSON ? ('L' + CURRENT_LESSON.id) : 'Answers';
+  const lessonTitle = CURRENT_LESSON ? CURRENT_LESSON.name : '';
+
+  try {
+    const res = await fetch('/api/answers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + localStorage.getItem('token')
+      },
+      body: JSON.stringify({
+        lesson_tab: lessonTab,
+        module: modTitle,
+        lesson: lessonTitle,
+        question: questionText,
+        answer: answerText
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      statusEl.style.color = 'var(--green)';
+      statusEl.innerText = 'Saved to your workbook!';
+    } else {
+      statusEl.style.color = 'var(--red)';
+      statusEl.innerText = data.error || 'Could not save answer.';
+    }
+  } catch (err) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.innerText = 'Network error saving answer.';
+  }
+
+  btn.disabled = false;
+  btn.innerText = 'Submit Answer';
+}
+
+async function submitPollVote(mIdx, bIdx) {
+  const uid = `${mIdx}-${bIdx}`;
+  const meta = POLL_META[uid];
+  const statusEl = document.getElementById('poll-st-' + uid);
+  const btn = document.getElementById('poll-btn-' + uid);
+  const modCard = document.getElementById('mod-card-' + mIdx);
+
+  if (!meta) return;
+
+  const checked = Array.from(document.querySelectorAll(`input[name="poll-${uid}"]:checked`)).map(el => el.value);
+  if (checked.length === 0) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.innerText = 'Please select at least one option.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = 'Submitting...';
+  statusEl.innerText = '';
+
+  const modTitle = modCard ? modCard.querySelector('.mod-title').innerText : '';
+  const lessonTab = CURRENT_LESSON ? ('L' + CURRENT_LESSON.id) : 'Answers';
+  const lessonTitle = CURRENT_LESSON ? CURRENT_LESSON.name : '';
+
+  try {
+    const res = await fetch('/api/poll-vote', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + localStorage.getItem('token')
+      },
+      body: JSON.stringify({
+        poll_key: meta.pollKey,
+        choices: checked,
+        lesson_tab: lessonTab,
+        module: modTitle,
+        lesson: lessonTitle,
+        question: meta.question
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      statusEl.style.color = 'var(--green)';
+      statusEl.innerText = 'Vote saved! (You can change your choice anytime)';
+      renderPollBars(uid, data);
+    } else {
+      statusEl.style.color = 'var(--red)';
+      statusEl.innerText = data.error || 'Could not submit vote.';
+      btn.innerText = 'Submit Vote';
+    }
+  } catch (err) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.innerText = 'Network error.';
+    btn.innerText = 'Submit Vote';
+  }
+
+  btn.disabled = false;
+}
+
+async function renderCommunity() {
+  const host = document.getElementById('posts-host');
+  const token = localStorage.getItem('token');
+  if (!token) { host.innerHTML = '<p class="community-sub" style="margin-top: 10px;">Please log in to join discussions.</p>'; return; }
+  try {
+    const r = await fetch('/api/posts', { headers: { 'Authorization': 'Bearer ' + token } });
+    const posts = await r.json();
+    host.innerHTML = posts.map(p => `
+      <div class="post">
+        <div class="post-head"><span class="post-name">${escapeHtml(p.user_name)}</span><span class="post-date">${(p.created_at || '').slice(0, 10)}</span></div>
+        <div>${escapeHtml(p.content)}</div>
+      </div>`).join('');
+  } catch (e) {}
+}
+
+async function submitPost() {
+  const input = document.getElementById('post-input');
+  const val = input.value.trim();
+  if (!val) return;
+  await fetch('/api/posts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+    body: JSON.stringify({ content: val })
+  });
+  input.value = '';
+  renderCommunity();
+}
+
+async function login() {
+  const errEl = document.getElementById('login-error');
+  errEl.innerText = '';
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await r.json();
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user_name', data.name);
+      localStorage.setItem('user_email', data.email);
+      localStorage.setItem('member_number', data.member_number || '1');
+      localStorage.setItem('user_status', data.status || 'Approved');
+      localStorage.setItem('is_admin', data.is_admin ? '1' : '0');
+      localStorage.setItem('is_paid', data.is_paid ? '1' : '0');
+      showHome();
+    } else {
+      errEl.innerText = data.error || 'Login failed.';
+    }
+  } catch (e) {
+    errEl.innerText = 'Login connection error.';
+  }
+}
+
+async function signup() {
+  const errEl = document.getElementById('signup-error');
+  errEl.innerText = '';
+  const name = document.getElementById('signup-name').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
+  const password = document.getElementById('signup-password').value;
+
+  if (!name || !email || !password) {
+    errEl.innerText = 'Please fill out all fields.';
+    return;
+  }
+
+  try {
+    const r = await fetch('/api/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password })
+    });
+    const data = await r.json();
+    if (data.token) {
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user_name', data.name);
+      localStorage.setItem('user_email', data.email);
+      localStorage.setItem('member_number', data.member_number || '1');
+      localStorage.setItem('user_status', data.status || 'Pending');
+      localStorage.setItem('is_admin', data.is_admin ? '1' : '0');
+      localStorage.setItem('is_paid', data.is_paid ? '1' : '0');
+      showHome();
+    } else {
+      errEl.innerText = data.error || 'Sign-up failed.';
+    }
+  } catch (e) {
+    errEl.innerText = 'Sign-up error.';
+  }
+}
+
+async function changePassword() {
+  const errEl = document.getElementById('cp-error');
+  errEl.innerText = '';
+  const newName = document.getElementById('cp-name').value.trim();
+  const currentPassword = document.getElementById('cp-current').value;
+  const newPassword = document.getElementById('cp-new').value;
+  const confirmNewPassword = document.getElementById('cp-new-confirm').value;
+
+  if (!newName && !newPassword && !confirmNewPassword) {
+    errEl.innerText = 'Enter a new name, a new password, or both.';
+    return;
+  }
+  if (!currentPassword) {
+    errEl.innerText = 'Please enter your current password.';
+    return;
+  }
+  if ((newPassword || confirmNewPassword) && newPassword !== confirmNewPassword) {
+    errEl.innerText = 'New passwords do not match.';
+    return;
+  }
+  if (newPassword && newPassword.length < 8) {
+    errEl.innerText = 'New password must be 8+ characters.';
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+      body: JSON.stringify({ currentPassword, newPassword, newName })
+    });
+    const data = await res.json();
+    if (data.success) {
+      if (newName) localStorage.setItem('user_name', newName);
+      alert('Updated successfully!');
+      document.getElementById('change-password-modal').classList.add('hidden');
+      document.getElementById('cp-name').value = '';
+      document.getElementById('cp-current').value = '';
+      document.getElementById('cp-new').value = '';
+      document.getElementById('cp-new-confirm').value = '';
+      renderHeader();
+    } else {
+      errEl.innerText = data.error || 'Failed to update.';
+    }
+  } catch (e) {
+    errEl.innerText = 'Network error.';
+  }
+}
+
+async function requestReset() {
+  const statusEl = document.getElementById('forgot-error');
+  const email = document.getElementById('forgot-email').value.trim();
+  if (!email) { statusEl.innerText = 'Please enter your email.'; return; }
+  await fetch('/api/forgot-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email })
+  });
+  statusEl.innerText = 'If registered, a reset link will be sent.';
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+let pendingClicks = 0;
+
+document.addEventListener('click', () => {
+  if (localStorage.getItem('token')) {
+    pendingClicks++;
+  }
+}, { passive: true });
+
+function flushActivity(useBeacon = false) {
+  const token = localStorage.getItem('token');
+  if (!token) return;
+
+  if (pendingClicks > 0) {
+    const batch = pendingClicks;
+    pendingClicks = 0;
+    const payload = JSON.stringify({ token, clicks: batch });
+
+    if (useBeacon && navigator.sendBeacon) {
+      navigator.sendBeacon('/api/activity', new Blob([payload], { type: 'application/json' }));
+    } else {
+      fetch('/api/activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: payload,
+        keepalive: true
+      }).catch(() => { pendingClicks += batch; });
+    }
+  } else if (!useBeacon) {
+    fetch('/api/heartbeat', { headers: { 'Authorization': 'Bearer ' + token } }).catch(() => {});
+  }
+}
+
+setInterval(() => flushActivity(false), 60000);
+window.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushActivity(true);
+});
+
+(async function init() {
+  await applySettings();
+  showHome();
+})();
+</script>
+</body>
+</html>
