@@ -17,6 +17,7 @@
       --slate: #6C757D;
       --lightBlue: #E9ECEF;
       --red: #C62828;
+      --green: #1B7F3B;
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
@@ -28,11 +29,13 @@
     .head-in { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 3px solid var(--primary); }
     .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.25rem; color: var(--primary); text-decoration: none; }
     .brand-logo { width: 44px; height: 44px; object-fit: contain; }
-    .btn { border-radius: 999px; font-weight: 800; cursor: pointer; transition: transform .15s; font-family: 'Nunito Sans'; border: none; }
+    .btn { border-radius: 999px; font-weight: 800; cursor: pointer; transition: transform .15s, opacity .15s; font-family: 'Nunito Sans'; border: none; }
     .btn:hover { transform: translateY(-2px); }
+    .btn:disabled { opacity: 0.6; cursor: default; transform: none; }
     .btn.small { padding: 6px 16px; font-size: .85rem; }
     .btn.ghost { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
     .btn.cta { background: var(--accent); color: #fff; box-shadow: 0 4px 0 rgba(0,0,0,.15); }
+    .btn.primary { background: var(--primary); color: #fff; }
     .name-chip { background: #fff; border: 2px solid var(--primary); border-radius: 999px; padding: 6px 16px; font-size: .85rem; font-weight: 800; cursor: pointer; transition: background .2s; }
     .name-chip:hover { background: var(--lightBlue); }
     .layout { display: grid; grid-template-columns: 1.2fr .8fr; gap: 28px; padding: 26px 0 70px; align-items: start; }
@@ -49,7 +52,8 @@
     .course-list { display: flex; flex-direction: column; gap: 14px; }
     .course { border-radius: 16px; padding: 18px 20px; box-shadow: 0 6px 0 rgba(0,0,0,.15); color: #fff; }
     .course h3 { margin: 0; font-size: 1.2rem; font-weight: 800; }
-    .course-btn { width: 100%; padding: 10px; border-radius: 999px; border: none; background: var(--primary); color: #fff; font-weight: 800; cursor: pointer; font-size: 1rem; margin: 10px 0; }
+    .course-btn { width: 100%; padding: 10px; border-radius: 999px; border: none; background: var(--primary); color: #fff; font-weight: 800; cursor: pointer; font-size: 1rem; margin: 10px 0 0; transition: transform .15s; }
+    .course-btn:hover { transform: translateY(-2px); }
     .community { padding: 26px 28px; margin-top: 28px; }
     .community h2 { font-size: 1.5rem; margin: 0 0 6px; }
     .community-sub { color: var(--slate); font-weight: 700; margin: 0 0 16px; }
@@ -58,6 +62,32 @@
     .post-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
     .post-name { font-weight: 800; }
     .post-date { font-size: .8rem; color: var(--slate); font-weight: 700; }
+
+    /* Lesson Viewer & Module Accordion */
+    .lesson-wrap { padding: 26px 0 70px; max-width: 880px; margin-inline: auto; }
+    .lesson-banner { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); color: #fff; border-radius: 18px; padding: 26px 30px; margin: 16px 0 24px; box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+    .lesson-banner .lesson-kicker { font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; opacity: .9; margin-bottom: 4px; }
+    .lesson-banner h1 { margin: 0; font-size: clamp(1.4rem, 3vw, 2rem); font-weight: 800; }
+    .mod-card { background: #fff; border-radius: 16px; box-shadow: 0 6px 18px rgba(0,0,0,.07); margin-bottom: 16px; border-left: 5px solid var(--accent); overflow: hidden; }
+    .mod-head { padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; gap: 14px; cursor: pointer; user-select: none; background: #fff; }
+    .mod-head:hover { background: #fafbfd; }
+    .mod-title { font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 1.12rem; color: var(--primary); }
+    .mod-chevron { font-size: .95rem; color: var(--accent); font-weight: 900; transition: transform .2s ease; }
+    .mod-card.open .mod-chevron { transform: rotate(180deg); }
+    .mod-body { display: none; padding: 20px 24px 24px; border-top: 1px solid #eef2f7; background: #fcfdfe; }
+    .mod-card.open .mod-body { display: block; }
+    .lesson-block { margin-bottom: 20px; }
+    .lesson-block:last-child { margin-bottom: 0; }
+    .lesson-block h4 { font-family: 'Poppins', sans-serif; font-size: 1.02rem; font-weight: 700; color: var(--primary); margin: 0 0 8px; }
+    .lesson-text { color: #2b3a4a; line-height: 1.65; white-space: pre-line; font-size: 1rem; }
+    .video-box { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 12px; background: #000; margin: 10px 0; }
+    .video-box iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+    .answer-box { background: #fff; border: 2px solid #dfe6ee; border-radius: 12px; padding: 16px 18px; margin-top: 10px; }
+    .answer-q { font-weight: 800; color: var(--primary); margin-bottom: 8px; font-size: .98rem; }
+    .answer-input { width: 100%; min-height: 92px; padding: 11px 13px; border-radius: 10px; border: 2px solid #cfd8e3; font: inherit; font-size: .96rem; resize: vertical; }
+    .answer-input:focus { outline: none; border-color: var(--accent); }
+    .answer-actions { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+    .answer-status { font-size: .88rem; font-weight: 800; }
 
     /* Dynamic Theme Auth Card */
     .auth-wrap { min-height: 80vh; display: grid; place-items: center; padding: 50px 0; }
@@ -118,6 +148,18 @@
       <h2 class="rail-title">Lessons</h2>
       <div class="course-list" id="course-list-home"></div>
     </aside>
+  </div>
+</div>
+
+<!-- Interactive Lesson Viewer & Module Accordion -->
+<div id="view-lesson" class="hidden">
+  <div class="wrap lesson-wrap">
+    <button class="btn ghost small" onclick="showHome()">&#8592; Back to Home</button>
+    <div class="lesson-banner">
+      <div class="lesson-kicker" id="lesson-view-kicker">Lesson</div>
+      <h1 id="lesson-view-title">Loading Lesson...</h1>
+    </div>
+    <div id="lesson-modules-host"></div>
   </div>
 </div>
 
@@ -198,7 +240,9 @@
 
 <script>
 let CMS_LESSONS_URL = '';
+let CMS_ROWS = [];
 let LESSONS = [];
+let CURRENT_LESSON = null;
 
 function formatDriveUrl(url) {
   if (!url) return '';
@@ -207,6 +251,18 @@ function formatDriveUrl(url) {
     return 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w1000';
   }
   return url;
+}
+
+function toEmbedVideoUrl(url) {
+  const raw = String(url || '').trim();
+  if (!raw) return '';
+  const ytMatch = raw.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{6,})/);
+  if (ytMatch) return 'https://www.youtube.com/embed/' + ytMatch[1];
+  const vimeoMatch = raw.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (vimeoMatch) return 'https://player.vimeo.com/video/' + vimeoMatch[1];
+  const driveMatch = raw.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (driveMatch) return 'https://drive.google.com/file/d/' + driveMatch[1] + '/preview';
+  return raw;
 }
 
 function parseCSV(text) {
@@ -294,7 +350,7 @@ async function applySettings() {
 }
 
 function hideViews() {
-  ['view-home', 'view-auth-signup', 'view-auth-login', 'view-auth-forgot'].forEach(id => {
+  ['view-home', 'view-lesson', 'view-auth-signup', 'view-auth-login', 'view-auth-forgot'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add('hidden');
   });
@@ -353,32 +409,242 @@ async function renderLessons() {
   try {
     const res = await fetch(CMS_LESSONS_URL);
     const csv = await res.text();
-    const rows = parseCSV(csv);
+    CMS_ROWS = parseCSV(csv);
     LESSONS = [];
     const seen = new Set();
-    for (let i = 1; i < rows.length; i++) {
-      const r = rows[i];
+
+    for (let i = 1; i < CMS_ROWS.length; i++) {
+      const r = CMS_ROWS[i];
       if (r.length < 3) continue;
       const lessonNum = (r[0] || '').trim();
       const lessonName = (r[1] || '').trim();
       const isActive = (r[2] || '').trim().toUpperCase();
+      const csvLink = (r.slice(3).find(c => String(c || '').trim().startsWith('http')) || '').trim();
+
       if (isActive === 'TRUE' && !seen.has(lessonNum)) {
         seen.add(lessonNum);
-        LESSONS.push({ id: lessonNum, name: lessonName });
+        LESSONS.push({ id: lessonNum, name: lessonName, csvUrl: csvLink });
       }
     }
+
     if (LESSONS.length === 0) {
       host.innerHTML = '<p class="community-sub" style="text-align: center; margin-top: 10px;">No active lessons right now.</p>';
       return;
     }
-    host.innerHTML = LESSONS.map(l => `
+
+    host.innerHTML = LESSONS.map((l, idx) => `
       <div class="course" style="background: linear-gradient(135deg, var(--primary), var(--accent))">
         <h3>${escapeHtml(l.name || 'Lesson ' + l.id)}</h3>
-        <button class="course-btn">Enter Lesson ${escapeHtml(l.id)}</button>
+        <button class="course-btn" onclick="openLesson(${idx})">Enter Lesson ${escapeHtml(l.id)}</button>
       </div>`).join('');
   } catch (e) {
     host.innerHTML = '<p style="color: red;">Failed to load lessons.</p>';
   }
+}
+
+async function openLesson(idx) {
+  const lesson = LESSONS[idx];
+  if (!lesson) return;
+
+  const token = localStorage.getItem('token');
+  if (!token) {
+    showAuth('login');
+    return;
+  }
+
+  const status = localStorage.getItem('user_status') || 'Approved';
+  const isAdmin = localStorage.getItem('is_admin') === '1' || localStorage.getItem('member_number') === '1';
+  if (status !== 'Approved' && !isAdmin) {
+    alert('Your account is currently pending approval. Once approved by the administrator, all lessons will unlock.');
+    return;
+  }
+
+  CURRENT_LESSON = lesson;
+  hideViews();
+  document.getElementById('view-lesson').classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  document.getElementById('lesson-view-kicker').innerText = 'Lesson ' + lesson.id;
+  document.getElementById('lesson-view-title').innerText = lesson.name || ('Lesson ' + lesson.id);
+
+  const host = document.getElementById('lesson-modules-host');
+  host.innerHTML = '<p class="community-sub">Loading modules...</p>';
+
+  try {
+    let rows = [];
+    if (lesson.csvUrl) {
+      const res = await fetch(lesson.csvUrl);
+      const csv = await res.text();
+      rows = parseCSV(csv).slice(1);
+    } else {
+      rows = CMS_ROWS.slice(1).filter(r => (r[0] || '').trim() === lesson.id);
+    }
+
+    const modules = buildModulesFromRows(rows, lesson);
+    if (modules.length === 0) {
+      host.innerHTML = '<div class="card" style="padding:24px;"><p class="community-sub" style="margin:0;">No modules have been published for this lesson yet.</p></div>';
+      return;
+    }
+
+    host.innerHTML = modules.map((mod, mIdx) => {
+      const blocksHtml = mod.blocks.map((b, bIdx) => renderLessonBlock(b, mIdx, bIdx)).join('');
+      return `
+        <div class="mod-card ${mIdx === 0 ? 'open' : ''}" id="mod-card-${mIdx}">
+          <div class="mod-head" onclick="toggleModule(${mIdx})">
+            <div class="mod-title">${escapeHtml(mod.title)}</div>
+            <span class="mod-chevron">&#9660;</span>
+          </div>
+          <div class="mod-body">
+            ${blocksHtml || '<p class="community-sub" style="margin:0;">No items in this module yet.</p>'}
+          </div>
+        </div>`;
+    }).join('');
+  } catch (err) {
+    host.innerHTML = '<p style="color: var(--red); font-weight: 700;">Failed to load lesson modules.</p>';
+  }
+}
+
+function buildModulesFromRows(rows, lesson) {
+  const modules = [];
+  let current = null;
+
+  for (const r of rows) {
+    const col0 = (r[0] || '').trim();
+    const col1 = (r[1] || '').trim();
+    const col2 = (r[2] || '').trim();
+    const col3 = (r[3] || '').trim();
+    const col4 = (r[4] || '').trim();
+
+    let type = '';
+    let title = '';
+    let content = '';
+    let extra = '';
+
+    // Support both dedicated lesson tabs ([#, Type, Title, Content, Extra]) and single-sheet CMS ([LessonID, LessonName, Active, Type, Title, Content])
+    const knownTypes = ['module', 'text', 'video', 'answer', 'question'];
+    if (knownTypes.includes(col1.toLowerCase())) {
+      type = col1.toLowerCase();
+      title = col2;
+      content = col3;
+      extra = col4;
+    } else if (knownTypes.includes(col3.toLowerCase())) {
+      type = col3.toLowerCase();
+      title = col4;
+      content = (r[5] || '').trim();
+      extra = (r[6] || '').trim();
+    } else {
+      continue;
+    }
+
+    if (type === 'module') {
+      current = { title: title || content || ('Module ' + (modules.length + 1)), blocks: [] };
+      modules.push(current);
+    } else {
+      if (!current) {
+        current = { title: lesson.name || 'Overview', blocks: [] };
+        modules.push(current);
+      }
+      current.blocks.push({ type, title, content, extra });
+    }
+  }
+
+  return modules;
+}
+
+function renderLessonBlock(block, mIdx, bIdx) {
+  const uid = `${mIdx}-${bIdx}`;
+  if (block.type === 'text') {
+    return `
+      <div class="lesson-block">
+        ${block.title ? `<h4>${escapeHtml(block.title)}</h4>` : ''}
+        <div class="lesson-text">${escapeHtml(block.content)}</div>
+      </div>`;
+  }
+  if (block.type === 'video') {
+    const videoUrl = toEmbedVideoUrl(block.content || block.extra);
+    return `
+      <div class="lesson-block">
+        ${block.title ? `<h4>${escapeHtml(block.title)}</h4>` : ''}
+        ${videoUrl ? `<div class="video-box"><iframe src="${escapeHtml(videoUrl)}" allowfullscreen loading="lazy"></iframe></div>` : ''}
+      </div>`;
+  }
+  if (block.type === 'answer' || block.type === 'question') {
+    const questionText = block.content || block.title || 'Your Reflection';
+    return `
+      <div class="lesson-block">
+        <div class="answer-box">
+          ${block.title && block.content ? `<div style="font-size:.82rem; font-weight:800; color:var(--accent); text-transform:uppercase; margin-bottom:4px;">${escapeHtml(block.title)}</div>` : ''}
+          <div class="answer-q" id="ans-q-${uid}">${escapeHtml(questionText)}</div>
+          <textarea class="answer-input" id="ans-in-${uid}" placeholder="${escapeHtml(block.extra || 'Write your response here...')}"></textarea>
+          <div class="answer-actions">
+            <button class="btn cta small" id="ans-btn-${uid}" onclick="submitLessonAnswer(${mIdx}, ${bIdx})">Submit Answer</button>
+            <span class="answer-status" id="ans-st-${uid}"></span>
+          </div>
+        </div>
+      </div>`;
+  }
+  return '';
+}
+
+function toggleModule(mIdx) {
+  const card = document.getElementById('mod-card-' + mIdx);
+  if (card) card.classList.toggle('open');
+}
+
+async function submitLessonAnswer(mIdx, bIdx) {
+  const uid = `${mIdx}-${bIdx}`;
+  const input = document.getElementById('ans-in-' + uid);
+  const statusEl = document.getElementById('ans-st-' + uid);
+  const btn = document.getElementById('ans-btn-' + uid);
+  const qEl = document.getElementById('ans-q-' + uid);
+  const modCard = document.getElementById('mod-card-' + mIdx);
+
+  const answerText = (input ? input.value : '').trim();
+  if (!answerText) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.innerText = 'Please enter an answer first.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = 'Saving...';
+  statusEl.innerText = '';
+
+  const modTitle = modCard ? modCard.querySelector('.mod-title').innerText : '';
+  const questionText = qEl ? qEl.innerText : '';
+  const lessonTab = CURRENT_LESSON ? ('L' + CURRENT_LESSON.id) : 'Answers';
+  const lessonTitle = CURRENT_LESSON ? (CURRENT_LESSON.name || ('Lesson ' + CURRENT_LESSON.id)) : '';
+
+  try {
+    const res = await fetch('/api/answers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + localStorage.getItem('token')
+      },
+      body: JSON.stringify({
+        lesson_tab: lessonTab,
+        module: modTitle,
+        lesson: lessonTitle,
+        question: questionText,
+        answer: answerText
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      statusEl.style.color = 'var(--green)';
+      statusEl.innerText = 'Saved to your workbook!';
+    } else {
+      statusEl.style.color = 'var(--red)';
+      statusEl.innerText = data.error || 'Could not save answer.';
+    }
+  } catch (err) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.innerText = 'Network error saving answer.';
+  }
+
+  btn.disabled = false;
+  btn.innerText = 'Submit Answer';
 }
 
 async function renderCommunity() {
@@ -427,6 +693,7 @@ async function login() {
       localStorage.setItem('user_name', data.name);
       localStorage.setItem('user_email', data.email);
       localStorage.setItem('member_number', data.member_number || '1');
+      localStorage.setItem('user_status', data.status || 'Approved');
       localStorage.setItem('is_admin', data.is_admin ? '1' : '0');
       showHome();
     } else {
@@ -461,6 +728,7 @@ async function signup() {
       localStorage.setItem('user_name', data.name);
       localStorage.setItem('user_email', data.email);
       localStorage.setItem('member_number', data.member_number || '1');
+      localStorage.setItem('user_status', data.status || 'Pending');
       localStorage.setItem('is_admin', data.is_admin ? '1' : '0');
       showHome();
     } else {
