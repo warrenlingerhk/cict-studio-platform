@@ -1,3 +1,5 @@
+
+
 name = "cict-studio-platform"
 main = "worker.js"
 compatibility_date = "2026-01-01"
@@ -10,6 +12,11 @@ binding = "ASSETS"
 binding = "DB"
 database_name = "studio-platform-db"
 database_id = "946e4222-5d1f-4b96-bc32-69e5abe49f8d"
+
+[[d1_databases]]
+binding = "aethera"
+database_name = "aethera_db"
+database_id = "53d144de-d766-44af-b7ec-0f6c9017a775"
 
 [vars]
 AMS_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwnKwZBct5XVwcM0EComP6P8WGaA0G5zM05KBCrsdM_rNANrkLWdGJHL4_uB4qIV-VR/exec"
