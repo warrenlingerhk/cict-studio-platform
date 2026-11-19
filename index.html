@@ -929,9 +929,9 @@ async function changePassword() {
   const errEl = document.getElementById('cp-error');
   errEl.innerText = '';
   const newName = document.getElementById('cp-name').value.trim();
-  const currentPassword = document.getElementById('cp-current').value;
-  const newPassword = document.getElementById('cp-new').value;
-  const confirmNewPassword = document.getElementById('cp-new-confirm').value;
+  const currentPassword = document.getElementById('cp-current').value.trim();
+  const newPassword = document.getElementById('cp-new').value.trim();
+  const confirmNewPassword = document.getElementById('cp-new-confirm').value.trim();
 
   if (!newName && !newPassword && !confirmNewPassword) {
     errEl.innerText = 'Enter a new name, a new password, or both.';
@@ -953,12 +953,15 @@ async function changePassword() {
   try {
     const res = await fetch('/api/change-password', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (localStorage.getItem('token') || '')
+      },
       body: JSON.stringify({ currentPassword, newPassword, newName })
     });
     const data = await res.json();
-    if (data.success) {
-      if (newName) localStorage.setItem('user_name', newName);
+    if (res.ok && data.success) {
+      if (data.name) localStorage.setItem('user_name', data.name);
       alert('Updated successfully!');
       document.getElementById('change-password-modal').classList.add('hidden');
       document.getElementById('cp-name').value = '';
