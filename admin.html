@@ -51,7 +51,7 @@
   .dot.on { background: var(--green); box-shadow: 0 0 6px rgba(27, 127, 59, .7); }
   .dot.off { background: #d3dce6; }
   label.chk { display: flex; gap: 6px; align-items: center; font-size: .82rem; color: var(--muted); font-weight: 600; cursor: pointer; }
-  #login { max-width: 380px; margin: 10vh auto; background: #fff; border-radius: 14px; box-shadow: 0 8px 24px rgba(0, 20, 60, .12); overflow: hidden; }
+  #login { max-width: 400px; margin: 10vh auto; background: #fff; border-radius: 14px; box-shadow: 0 8px 24px rgba(0, 20, 60, .12); overflow: hidden; }
   .auth-band { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); color: #fff; font-weight: 800; font-size: 1.2rem; padding: 16px 20px; }
   .auth-body { padding: 22px; }
   input, textarea { width: 100%; padding: 11px; margin: 6px 0 14px; border: 2px solid #dfe6ee; border-radius: 8px; font-size: .95rem; font-family: inherit; }
@@ -82,9 +82,11 @@
 <div id="login" class="hidden">
   <div class="auth-band" id="login-band">Platform <span>Admin</span></div>
   <div class="auth-body">
-    <p class="muted" style="margin-bottom:12px;">Please sign in on the main site with an administrator account to access this dashboard.</p>
+    <p id="li-err" class="muted" style="margin-bottom:14px; color:var(--red); font-weight:700;"></p>
+    <input id="li-email" type="email" placeholder="Admin Email">
+    <input id="li-pass" type="password" placeholder="Password">
+    <button class="btn-primary" style="width:100%; padding:11px; margin-bottom:10px;" onclick="quickAdminLogin()">Verify &amp; Open Dashboard</button>
     <a class="pill" href="/" style="width:100%; justify-content:center;">&#8592; Go to Main Site</a>
-    <p id="li-err" class="muted" style="margin-top:10px; color:var(--red); font-weight:700;"></p>
   </div>
 </div>
 
@@ -326,6 +328,7 @@ async function api(path, opts = {}) {
 function showUnauthorized(msg) {
   $('login').classList.remove('hidden');
   $('dash').classList.add('hidden');
+  $('li-email').value = localStorage.getItem('user_email') || '';
   $('li-err').textContent = msg || '';
 }
 
@@ -334,6 +337,43 @@ function showDash() {
   $('dash').classList.remove('hidden');
   loadSetupQuestionsAndValues();
   loadAll();
+}
+
+async function quickAdminLogin() {
+  const email = $('li-email').value.trim();
+  const password = $('li-pass').value.trim();
+  if (!email || !password) {
+    $('li-err').textContent = 'Please enter your email and password.';
+    return;
+  }
+  const r = await fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+  const data = await r.json();
+  if (!r.ok || !data.token) {
+    $('li-err').textContent = data.error || 'Login failed.';
+    return;
+  }
+  TOKEN = data.token;
+  localStorage.setItem('token', data.token);
+  localStorage.setItem('user_name', data.name);
+  localStorage.setItem('user_email', data.email);
+  localStorage.setItem('member_number', data.member_number || '1');
+  localStorage.setItem('user_status', data.status || 'Approved');
+  localStorage.setItem('is_admin', data.is_admin ? '1' : '0');
+  localStorage.setItem('is_paid', data.is_paid ? '1' : '0');
+
+  const check = await api('/api/admin/users');
+  if (check.ok) {
+    const dashData = await check.json();
+    showDash();
+    renderDashboardData(dashData);
+  } else {
+    const errJson = await check.json().catch(() => ({}));
+    $('li-err').textContent = errJson.error || 'Account does not have administrator access.';
+  }
 }
 
 async function boot() {
@@ -348,14 +388,14 @@ async function boot() {
     return;
   }
 
-  // Verify admin access directly with the existing session token
   const res = await api('/api/admin/users');
   if (res.ok) {
     const data = await res.json();
     showDash();
     renderDashboardData(data);
   } else {
-    showUnauthorized('Your account does not have administrator access.');
+    const errJson = await res.json().catch(() => ({}));
+    showUnauthorized(errJson.error || 'Your account does not have administrator access.');
   }
 }
 
