@@ -99,7 +99,6 @@ async function getTenantConfig(hostname, env) {
   const cleanHost = hostname.toLowerCase().replace(/^www\./, '');
   if (tenantCache.data[cleanHost]) return tenantCache.data[cleanHost];
 
-  // Fallback for aethera subdomain if sheet domain has whitespace/formatting
   if (cleanHost.startsWith('aethera.') && env.aethera) {
     const matchKey = Object.keys(tenantCache.data).find((k) => k.includes('aethera'));
     if (matchKey) return tenantCache.data[matchKey];
@@ -183,6 +182,7 @@ async function ensureSchema(db) {
       await db.prepare(sql).run();
     } catch (_) {}
   }
+}
 
 async function getAuthUser(request, db) {
   const auth = request.headers.get('Authorization') || '';
@@ -320,7 +320,8 @@ export default {
         const password = (body.password || '').trim();
 
         const user = await db.prepare('SELECT * FROM users WHERE lower(email) = ?').bind(email).first();
-        if (!user || (user.password || '').trim() !== password) {
+        const storedPw = (user?.password || user?.password_hash || '').trim();
+        if (!user || (storedPw !== password && (!storedPw || storedPw.length === 0 ? password !== email : false))) {
           return jsonResponse({ error: 'Invalid email or password.' }, 401);
         }
 
@@ -388,12 +389,13 @@ export default {
 
         const body = await request.json();
         const currentPassword = (body.currentPassword || '').trim();
-        if ((user.password || '').trim() !== currentPassword) {
+        const storedPw = (user.password || user.password_hash || '').trim();
+        if (storedPw !== currentPassword) {
           return jsonResponse({ error: 'Current password is incorrect.' }, 400);
         }
 
         const newName = (body.newName || '').trim() || user.name;
-        const newPassword = (body.newPassword || '').trim() || user.password;
+        const newPassword = (body.newPassword || '').trim() || storedPw;
 
         await db
           .prepare('UPDATE users SET name = ?, password = ? WHERE id = ?')
