@@ -1,3 +1,5 @@
+
+
 // ============================================================================
 // MULTI-TENANT SAAS CLOUDFLARE WORKER (worker.js)
 // Routes requests by hostname via Master Tenants Sheet & binds D1 dynamically
@@ -96,6 +98,12 @@ async function getTenantConfig(hostname, env) {
 
   const cleanHost = hostname.toLowerCase().replace(/^www\./, '');
   if (tenantCache.data[cleanHost]) return tenantCache.data[cleanHost];
+
+  // Fallback for aethera subdomain if sheet domain has whitespace/formatting
+  if (cleanHost.startsWith('aethera.') && env.aethera) {
+    const matchKey = Object.keys(tenantCache.data).find((k) => k.includes('aethera'));
+    if (matchKey) return tenantCache.data[matchKey];
+  }
 
   const firstKey = Object.keys(tenantCache.data)[0];
   return tenantCache.data[firstKey] || null;
@@ -252,6 +260,7 @@ export default {
 
         return jsonResponse({
           domain: tenant.domain,
+          db_binding: tenant.db_binding,
           cms_csv_url: tenant.cms_csv_url,
           settings: mergedSettings,
         });
@@ -262,7 +271,7 @@ export default {
         const body = await request.json();
         const name = (body.name || '').trim();
         const email = (body.email || '').trim().toLowerCase();
-        const password = body.password || '';
+        const password = (body.password || '').trim();
 
         if (!name || !email || !password) {
           return jsonResponse({ error: 'Name, email, and password are required.' }, 400);
@@ -304,10 +313,10 @@ export default {
       if (path === '/api/login' && request.method === 'POST') {
         const body = await request.json();
         const email = (body.email || '').trim().toLowerCase();
-        const password = body.password || '';
+        const password = (body.password || '').trim();
 
         const user = await db.prepare('SELECT * FROM users WHERE lower(email) = ?').bind(email).first();
-        if (!user || (user.password !== password && password !== email)) {
+        if (!user || (user.password || '').trim() !== password) {
           return jsonResponse({ error: 'Invalid email or password.' }, 401);
         }
 
@@ -319,14 +328,16 @@ export default {
           .bind(token, newSessions, nowIso, nowIso, user.id)
           .run();
 
+        const isAdminFlag = Number(user.is_admin) === 1 || String(user.member_number) === '1' ? 1 : 0;
+
         return jsonResponse({
           token,
           name: user.name,
           email: user.email,
           member_number: user.member_number || String(user.id),
           status: user.status || 'Approved',
-          is_admin: user.is_admin || (user.member_number === '1' ? 1 : 0),
-          is_paid: user.is_paid || 0,
+          is_admin: isAdminFlag,
+          is_paid: Number(user.is_paid) === 1 ? 1 : 0,
         });
       }
 
@@ -369,15 +380,16 @@ export default {
       // 5. POST /api/change-password
       if (path === '/api/change-password' && request.method === 'POST') {
         const user = await getAuthUser(request, db);
-        if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+        if (!user) return jsonResponse({ error: 'Session expired. Please log out and log in again.' }, 401);
 
         const body = await request.json();
-        if (user.password !== body.currentPassword && body.currentPassword !== user.email) {
+        const currentPassword = (body.currentPassword || '').trim();
+        if ((user.password || '').trim() !== currentPassword) {
           return jsonResponse({ error: 'Current password is incorrect.' }, 400);
         }
 
         const newName = (body.newName || '').trim() || user.name;
-        const newPassword = body.newPassword || user.password;
+        const newPassword = (body.newPassword || '').trim() || user.password;
 
         await db
           .prepare('UPDATE users SET name = ?, password = ? WHERE id = ?')
@@ -501,7 +513,7 @@ export default {
         });
       }
 
-      // 8c. POST /api/poll-vote (Allows changing response anytime; updates existing vote)
+      // 8c. POST /api/poll-vote
       if (path === '/api/poll-vote' && request.method === 'POST') {
         const user = await getAuthUser(request, db);
         if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
@@ -559,9 +571,13 @@ export default {
       // ADMIN ROUTES
       // ======================================================================
       const adminUser = await getAuthUser(request, db);
-      const isAdmin = adminUser && (adminUser.is_admin === 1 || adminUser.member_number === '1');
+      if (!adminUser) {
+        return jsonResponse({ error: 'Session token not recognized on ' + tenant.db_binding + '. Please log out and log back in.' }, 401);
+      }
+
+      const isAdmin = Number(adminUser.is_admin) === 1 || String(adminUser.member_number) === '1';
       if (!isAdmin) {
-        return jsonResponse({ error: 'Admin access required.' }, 403);
+        return jsonResponse({ error: 'Account ' + adminUser.email + ' is not marked as Admin.' }, 403);
       }
 
       if (path === '/api/admin/users' && request.method === 'GET') {
