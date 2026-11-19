@@ -57,7 +57,6 @@
   input, textarea { width: 100%; padding: 11px; margin: 6px 0 14px; border: 2px solid #dfe6ee; border-radius: 8px; font-size: .95rem; font-family: inherit; }
   input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   .hidden { display: none !important; }
-  .post-ex { background: #f5f7fa; border-radius: 8px; padding: 8px 10px; margin: 6px 0; font-size: .85rem; color: var(--muted); max-width: 520px; }
 
   /* Expandable Site Setup Accordion */
   .accordion { background: var(--card); border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 20, 60, .08); margin: 16px 0 22px; border-left: 5px solid var(--accent); overflow: hidden; }
@@ -83,9 +82,8 @@
 <div id="login" class="hidden">
   <div class="auth-band" id="login-band">Platform <span>Admin</span></div>
   <div class="auth-body">
-    <input id="li-email" type="email" placeholder="Admin Email">
-    <input id="li-pass" type="password" placeholder="Password">
-    <button class="btn-primary" style="width:100%; padding:11px;" onclick="doLogin()">Log in</button>
+    <p class="muted" style="margin-bottom:12px;">Please sign in on the main site with an administrator account to access this dashboard.</p>
+    <a class="pill" href="/" style="width:100%; justify-content:center;">&#8592; Go to Main Site</a>
     <p id="li-err" class="muted" style="margin-top:10px; color:var(--red); font-weight:700;"></p>
   </div>
 </div>
@@ -124,14 +122,11 @@
     <button id="sync-members-btn" class="btn-ghost" style="font-size:.78rem; padding:6px 14px;" onclick="syncMembers()">Sync Members Sheet</button>
   </h2>
   <div id="members"></div>
-  <h2>Reports</h2>
-  <div id="reports"></div>
 </div>
 
 <script>
 const ADMIN_QUESTIONS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTexC6A2yzJEz3sH8UDKzmbb9Qu1rxsOowzT26Nkjwy_nBxFLogkzDF0M17FOlJaHAyI1Vp6hWeAYhb/pub?gid=1419818085&single=true&output=csv';
-const KEYS = ['token'];
-let TOKEN = '';
+let TOKEN = localStorage.getItem('token') || '';
 let SETUP_FIELDS = [];
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -228,13 +223,13 @@ function applyThemeValues(s) {
 
 async function loadSetupQuestionsAndValues() {
   try {
-    const [qRes, sData] = await Promise.all([
+    const [qRes, cfgData] = await Promise.all([
       fetch(ADMIN_QUESTIONS_CSV_URL),
-      getJSON('/api/admin/settings')
+      fetch('/api/config').then(r => r.ok ? r.json() : null)
     ]);
     const csv = await qRes.text();
     const rows = parseCSV(csv);
-    const saved = (sData && sData.settings) ? sData.settings : {};
+    const saved = (cfgData && cfgData.settings) ? cfgData.settings : {};
     applyThemeValues(saved);
 
     SETUP_FIELDS = [];
@@ -298,7 +293,7 @@ async function saveSiteSettings() {
   });
 
   try {
-    const r = await api('/api/admin/settings', { method: 'POST', body: { settings: payload } });
+    const r = await api('/api/admin/settings', { method: 'POST', body: payload });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) {
       if (msg) { msg.style.color = 'var(--red)'; msg.textContent = j.error || 'Failed to save settings.'; }
@@ -328,28 +323,7 @@ async function api(path, opts = {}) {
   });
 }
 
-async function getJSON(path) {
-  const r = await api(path);
-  if (!r.ok) return null;
-  try { return await r.json(); } catch (e) { return null; }
-}
-
-async function statsStatus(t) {
-  try {
-    const r = await fetch('/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + t } });
-    return r.status;
-  } catch (e) { return 0; }
-}
-
-async function findToken() {
-  for (const k of KEYS) {
-    const v = localStorage.getItem(k);
-    if (v && await statsStatus(v) === 200) return v;
-  }
-  return '';
-}
-
-function showLogin(msg) {
+function showUnauthorized(msg) {
   $('login').classList.remove('hidden');
   $('dash').classList.add('hidden');
   $('li-err').textContent = msg || '';
@@ -368,23 +342,21 @@ async function boot() {
     if (pub && pub.settings) applyThemeValues(pub.settings);
   } catch (e) {}
 
-  TOKEN = await findToken();
-  if (TOKEN) { showDash(); return; }
-  showLogin('');
-}
+  TOKEN = localStorage.getItem('token') || '';
+  if (!TOKEN) {
+    window.location.href = '/';
+    return;
+  }
 
-async function doLogin() {
-  const r = await fetch('/api/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: $('li-email').value, password: $('li-pass').value })
-  });
-  const j = await r.json();
-  if (!r.ok) { showLogin(j.error || 'Login failed.'); return; }
-  TOKEN = j.token;
-  localStorage.setItem('token', j.token);
-  if (await statsStatus(TOKEN) === 200) { showDash(); return; }
-  showLogin('Login worked, but this account does not have admin permissions.');
+  // Verify admin access directly with the existing session token
+  const res = await api('/api/admin/users');
+  if (res.ok) {
+    const data = await res.json();
+    showDash();
+    renderDashboardData(data);
+  } else {
+    showUnauthorized('Your account does not have administrator access.');
+  }
 }
 
 async function act(path, body) {
@@ -396,7 +368,7 @@ async function act(path, body) {
   loadAll();
 }
 
-function setStatus(id, status) { act('/api/admin/status', { user_id: id, status }); }
+function setStatus(id, status) { act('/api/admin/user-status', { userId: id, status }); }
 
 async function syncMembers() {
   const btn = $('sync-members-btn');
@@ -412,30 +384,38 @@ async function syncMembers() {
 }
 
 async function loadAll() {
-  const [stats, analytics, users, reports] = await Promise.all([
-    getJSON('/api/admin/stats'),
-    getJSON('/api/admin/analytics'),
-    getJSON('/api/admin/users'),
-    getJSON('/api/admin/reports')
-  ]);
+  const res = await api('/api/admin/users');
+  if (!res.ok) return;
+  const data = await res.json();
+  renderDashboardData(data);
+}
 
-  $('stats').innerHTML = stats ? `
-    <div class="card"><b>${stats.users || 0}</b><span>Members</span></div>
-    <div class="card"><b>${stats.totalSessions || 0}</b><span>Total Sessions</span></div>
-    <div class="card"><b>${stats.totalClicks || 0}</b><span>Total Clicks</span></div>
-    <div class="card"><b>${stats.posts || 0}</b><span>Posts</span></div>
-    <div class="card"><b>${stats.reports || 0}</b><span>Open reports</span></div>
-    <div class="card"><b>${stats.active || 0}</b><span>Active users (last 5 min)</span></div>`
-    : '<p class="muted">Stats unavailable.</p>';
+function renderDashboardData(data) {
+  const users = Array.isArray(data.users) ? data.users : [];
+  const totalUsers = users.length;
+  const totalSessions = users.reduce((sum, u) => sum + (Number(u.session_count) || 0), 0);
+  const totalClicks = users.reduce((sum, u) => sum + (Number(u.click_count) || 0), 0);
+  const activeNow = users.filter(u => isOnline(u.last_seen)).length;
+  const activeLearners = users.filter(u => (Number(u.lessons_done) || 0) > 0 || (Number(u.post_count) || 0) > 0).length;
+  const activeRate = totalUsers ? Math.round((activeLearners / totalUsers) * 100) : 0;
+  const avgSessions = totalUsers ? (totalSessions / totalUsers).toFixed(1) : '0';
+  const avgClicksPerSession = totalSessions ? (totalClicks / totalSessions).toFixed(1) : '0';
 
-  $('analytics').innerHTML = analytics ? `
-    <div class="card"><b>${analytics.totalUsers || 0}</b><span>Total users</span></div>
-    <div class="card"><b>${analytics.activeLearners || 0}</b><span>Active learners</span></div>
-    <div class="card"><b>${analytics.eliteRate || 0}%</b><span>Active member rate</span></div>
-    <div class="card"><b>${analytics.engagement || 0}</b><span>Avg sessions / user</span></div>
-    <div class="card"><b>${analytics.healthRatio || 0}</b><span>Avg clicks / session</span></div>` : '';
+  $('stats').innerHTML = `
+    <div class="card"><b>${totalUsers}</b><span>Members</span></div>
+    <div class="card"><b>${totalSessions}</b><span>Total Sessions</span></div>
+    <div class="card"><b>${totalClicks}</b><span>Total Clicks</span></div>
+    <div class="card"><b>${data.total_posts || 0}</b><span>Posts</span></div>
+    <div class="card"><b>${activeNow}</b><span>Active users (last 5 min)</span></div>`;
 
-  $('members').innerHTML = (Array.isArray(users) && users.length) ? users.map(u => {
+  $('analytics').innerHTML = `
+    <div class="card"><b>${totalUsers}</b><span>Total users</span></div>
+    <div class="card"><b>${activeLearners}</b><span>Active learners</span></div>
+    <div class="card"><b>${activeRate}%</b><span>Active member rate</span></div>
+    <div class="card"><b>${avgSessions}</b><span>Avg sessions / user</span></div>
+    <div class="card"><b>${avgClicksPerSession}</b><span>Avg clicks / session</span></div>`;
+
+  $('members').innerHTML = users.length ? users.map(u => {
     const on = isOnline(u.last_seen);
     const isPaid = u.is_paid === 1;
     const isApproved = u.status === 'Approved';
@@ -457,35 +437,21 @@ async function loadAll() {
           <span class="muted">${esc(u.email)} &middot; joined ${esc((u.created_at || '').slice(0, 10))}</span>
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
-          <button class="${isPaid ? 'btn-primary' : 'btn-ghost'} btn-mini" onclick="act('/api/admin/set-paid', { user_id: ${u.id}, is_paid: ${isPaid ? 0 : 1} })">${isPaid ? 'Paid' : 'Free'}</button>
+          <button class="${isPaid ? 'btn-primary' : 'btn-ghost'} btn-mini" onclick="act('/api/admin/user-paid', { userId: ${u.id}, is_paid: ${isPaid ? 0 : 1} })">${isPaid ? 'Paid' : 'Free'}</button>
           <button class="${isApproved ? 'btn-green' : 'btn-ghost'} btn-mini" ${isApproved ? 'disabled' : ''} onclick="setStatus(${u.id}, 'Approved')">${isApproved ? 'Approved' : 'Approve'}</button>
           <button class="${isPending ? 'btn-amber' : 'btn-ghost'} btn-mini" ${isPending ? 'disabled' : ''} onclick="setStatus(${u.id}, 'Pending')">Pending</button>
           <button class="btn-red btn-mini" ${isBanned ? 'disabled' : ''} onclick="setStatus(${u.id}, 'Banned')">Banned</button>
-          <label class="chk"><input type="checkbox" ${u.is_admin ? 'checked' : ''} onchange="act('/api/admin/set-admin', { user_id: ${u.id}, is_admin: this.checked ? 1 : 0 })"> Admin</label>
+          <label class="chk"><input type="checkbox" ${u.is_admin ? 'checked' : ''} onchange="act('/api/admin/user-admin', { userId: ${u.id}, is_admin: this.checked ? 1 : 0 })"> Admin</label>
           <button class="btn-ghost btn-mini" onclick="resetPw(${u.id})">Reset PW</button>
         </div>
       </div>
     `;
   }).join('') : '<p class="muted">No members enrolled.</p>';
-
-  $('reports').innerHTML = Array.isArray(reports) ? (reports.length ? reports.map(r => `
-    <div class="row" style="display:block;">
-      <div class="muted">${esc(r.reporter_name || '?')} reported ${esc(r.reported_user_name || '?')} &middot; ${esc((r.created_at || '').slice(0, 10))} ${r.resolved ? '<span class="badge">RESOLVED</span>' : ''}</div>
-      <div class="post-ex">${esc(r.post_content || '(post deleted)')}</div>
-      <div class="muted" style="margin-bottom:8px;">Reason: ${esc(r.reason || '—')}</div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button class="btn-primary" onclick="act('/api/admin/reports/resolve', { report_id: ${r.id}, resolved: ${r.resolved ? 0 : 1} })">${r.resolved ? 'Reopen' : 'Resolve'}</button>
-        ${r.post_id ? `<button class="btn-red" onclick="act('/api/posts/delete', { post_id: ${r.post_id} })">Delete post</button>` : ''}
-        <button class="btn-ghost" onclick="act('/api/admin/reports/delete', { report_id: ${r.id} })">Delete report</button>
-      </div>
-    </div>
-  `).join('') : '<p class="muted">No reports. 🎉</p>') : '<p class="muted">Reports unavailable.</p>';
 }
 
 async function resetPw(id) {
-  const pw = prompt('New password for this member (8+ characters):');
-  if (!pw) return;
-  act('/api/admin/reset-password', { user_id: id, new_password: pw });
+  if (!confirm("Reset this member's password back to their email address?")) return;
+  act('/api/admin/reset-password', { userId: id });
 }
 
 setInterval(() => { if (TOKEN) api('/api/heartbeat').catch(() => {}); }, 60000);
