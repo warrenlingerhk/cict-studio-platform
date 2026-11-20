@@ -934,7 +934,7 @@ function renderEventDetail(eventId, overrideDate) {
   };
 
   let actionHtml = '';
-  if (ev.enrolled || isAdmin) {
+  if (ev.enrolled) {
     const locDisplay = ev.location_url
       ? (ev.location_url.startsWith('http')
           ? `<a href="${escapeHtml(ev.location_url)}" target="_blank" rel="noopener noreferrer" class="btn cta small">Join ${escapeHtml(ev.location_type)} &#8599;</a>`
