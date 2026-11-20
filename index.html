@@ -82,9 +82,29 @@
     .post-name { font-weight: 800; }
     .post-date { font-size: .8rem; color: var(--slate); font-weight: 700; }
 
-    /* Lesson Viewer & Module Accordion */
+/* Lesson Viewer & Module Accordion */
     .lesson-wrap { padding: 26px 0 70px; max-width: 880px; margin-inline: auto; }
-    .lesson-banner { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); color: #fff; border-radius: 18px; padding: 26px 30px; margin: 16px 0 24px; box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+    .lesson-banner {
+      position: sticky;
+      top: 72px;
+      z-index: 40;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      color: #fff;
+      border-radius: 18px;
+      padding: 26px 30px;
+      margin: 16px 0 24px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    }
+    .lesson-banner::before {
+      content: '';
+      position: absolute;
+      top: -18px;
+      left: 0;
+      right: 0;
+      height: 18px;
+      background: var(--bg);
+      z-index: -1;
+    }
     .lesson-banner .lesson-kicker { font-size: .8rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; opacity: .9; margin-bottom: 4px; }
     .lesson-banner h1 { margin: 0; font-size: clamp(1.4rem, 3vw, 2rem); font-weight: 800; }
     .mod-card { background: #fff; border-radius: 16px; box-shadow: 0 6px 18px rgba(0,0,0,.07); margin-bottom: 16px; border-left: 5px solid var(--accent); overflow: hidden; }
