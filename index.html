@@ -55,6 +55,7 @@
     .btn.ghost:hover { background: var(--lightBlue); }
     .btn.cta { background: var(--accent); color: #fff; box-shadow: 0 4px 0 rgba(0,0,0,.15); }
     .btn.primary { background: var(--primary); color: #fff; }
+    .btn.danger { background: #fee2e2; color: var(--red); border: 1.5px solid #fecaca; }
     .name-chip { background: #fff; border: 2px solid var(--primary); color: var(--primary); border-radius: 999px; padding: 7px 18px; font-size: .88rem; font-weight: 800; cursor: pointer; transition: transform .15s, background .15s; display: inline-flex; align-items: center; }
     .name-chip:hover { transform: translateY(-2px); background: var(--lightBlue); }
     .layout { display: grid; grid-template-columns: 1.2fr .8fr; gap: 28px; padding: 26px 0 70px; align-items: start; }
@@ -67,13 +68,144 @@
     .hero-bullets { list-style: none; padding: 0; margin: 16px 0 0; }
     .hero-bullets li { font-size: 1.05rem; font-weight: 700; color: var(--slate); margin-bottom: 8px; padding-left: 22px; position: relative; }
     .hero-bullets li::before { content: '•'; color: var(--accent); font-weight: 800; position: absolute; left: 0; }
+
+    /* Collapsible Skool-Style Calendar Banner */
+    .cal-section { margin-top: 22px; overflow: hidden; border-left: 5px solid var(--accent); }
+    .cal-banner {
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      user-select: none;
+      background: #fff;
+      transition: background .15s;
+    }
+    .cal-banner:hover { background: #fafbfd; }
+    .cal-banner-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .cal-banner-title { font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 1.08rem; color: var(--primary); }
+    .cal-next-pill {
+      background: var(--lightBlue);
+      color: var(--primary);
+      font-size: .82rem;
+      font-weight: 800;
+      padding: 4px 12px;
+      border-radius: 999px;
+    }
+    .cal-chevron { color: var(--accent); font-weight: 900; font-size: .95rem; transition: transform .2s; }
+    .cal-section.open .cal-chevron { transform: rotate(180deg); }
+    .cal-body { display: none; padding: 18px 22px 24px; border-top: 1px solid #eef2f7; background: #fcfdfe; }
+    .cal-section.open .cal-body { display: block; }
+
+    .cal-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .cal-nav { display: flex; align-items: center; gap: 10px; }
+    .cal-month-label { font-family: 'Poppins', sans-serif; font-weight: 800; font-size: 1.05rem; color: var(--primary); min-width: 150px; text-align: center; }
+    .cal-icon-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      border: 1.5px solid #dbe2ea;
+      background: #fff;
+      color: var(--primary);
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .15s, transform .15s;
+    }
+    .cal-icon-btn:hover { background: var(--lightBlue); transform: translateY(-1px); }
+    .cal-add-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1.35rem;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 3px 0 rgba(0,0,0,.15);
+    }
+    .cal-add-btn:hover { transform: translateY(-2px); }
+
+    .cal-grid-wrap { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #fff; }
+    .cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+    .cal-weekdays div { padding: 8px 4px; text-align: center; font-size: .78rem; font-weight: 800; color: var(--slate); text-transform: uppercase; }
+    .cal-days { display: grid; grid-template-columns: repeat(7, 1fr); }
+    .cal-cell {
+      min-height: 82px;
+      border-right: 1px solid #eef2f7;
+      border-bottom: 1px solid #eef2f7;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background: #fff;
+    }
+    .cal-cell:nth-child(7n) { border-right: none; }
+    .cal-cell.other-month { background: #f9fafb; color: #94a3b8; }
+    .cal-day-num { font-size: .8rem; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 999px; }
+    .cal-cell.today .cal-day-num { background: #e53935; color: #fff; }
+    .cal-event-chip {
+      background: var(--primary);
+      color: #fff;
+      font-size: .72rem;
+      font-weight: 700;
+      padding: 3px 6px;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      border-left: 3px solid var(--accent);
+      transition: opacity .15s;
+    }
+    .cal-event-chip:hover { opacity: 0.9; }
+    .cal-event-chip.selected { outline: 2px solid var(--accent); }
+
+    /* Expanded Event Detail Card */
+    .event-detail-card {
+      margin-top: 16px;
+      background: #fff;
+      border: 2px solid var(--accent);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(0,0,0,.07);
+    }
+    .event-cover { width: 100%; max-height: 210px; object-fit: cover; display: block; }
+    .event-detail-body { padding: 18px 20px; }
+    .event-meta-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+    .event-badge { font-size: .74rem; font-weight: 800; padding: 3px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; }
+    .badge-all { background: #e0f2fe; color: #0369a1; }
+    .badge-free { background: #dcfce7; color: #15803d; }
+    .badge-paid { background: var(--accent); color: #fff; }
+    .event-link-box {
+      margin-top: 12px;
+      padding: 12px 14px;
+      background: #f0fdf4;
+      border: 1.5px solid #bbf7d0;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .cal-export-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid #eef2f7; align-items: center; justify-content: space-between; }
+
     .rail-title { font-size: 1.25rem; font-weight: 800; margin: 6px 0 14px; text-align: center; }
     .course-list { display: flex; flex-direction: column; gap: 14px; }
     .course { border-radius: 16px; padding: 18px 20px; box-shadow: 0 6px 0 rgba(0,0,0,.15); color: #fff; }
     .course h3 { margin: 0; font-size: 1.2rem; font-weight: 800; }
     .course-btn { width: 100%; padding: 10px; border-radius: 999px; border: none; background: var(--primary); color: #fff; font-weight: 800; cursor: pointer; font-size: 1rem; margin: 10px 0 0; transition: transform .15s; }
     .course-btn:hover { transform: translateY(-2px); }
-    .community { padding: 26px 28px; margin-top: 28px; }
+    .community { padding: 26px 28px; margin-top: 24px; }
     .community h2 { font-size: 1.5rem; margin: 0 0 6px; }
     .community-sub { color: var(--slate); font-weight: 700; margin: 0 0 16px; }
     #post-input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 2px solid var(--slate); font: inherit; font-size: 1rem; min-height: 80px; }
@@ -82,7 +214,7 @@
     .post-name { font-weight: 800; }
     .post-date { font-size: .8rem; color: var(--slate); font-weight: 700; }
 
-/* Lesson Viewer & Module Accordion */
+    /* Lesson Viewer & Module Accordion */
     .lesson-wrap { padding: 26px 0 70px; max-width: 880px; margin-inline: auto; }
     .lesson-banner {
       position: sticky;
@@ -171,12 +303,25 @@
     .auth-link:hover { text-decoration: underline; }
     .form-error { color: var(--red); font-weight: 800; font-size: 0.95rem; margin-top: 8px; text-align: center; }
 
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; display: grid; place-items: center; padding: 20px; }
-    .modal-box { background: #fff; border-radius: 18px; padding: 30px; max-width: 440px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; display: grid; place-items: center; padding: 20px; overflow-y: auto; }
+    .modal-box { background: #fff; border-radius: 18px; padding: 26px 28px; max-width: 520px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
     .modal-box h3 { margin: 0 0 14px; font-size: 1.35rem; font-weight: 800; }
-    .modal-box input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 2px solid var(--slate); margin-bottom: 10px; font-size: .95rem; }
+    .modal-box input, .modal-box select, .modal-box textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 2px solid #cbd5e1;
+      margin-bottom: 10px;
+      font: inherit;
+      font-size: .95rem;
+    }
+    .modal-box label { display: block; font-size: .82rem; font-weight: 800; color: var(--primary); margin-bottom: 3px; }
+    .modal-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-    @media(max-width: 900px) { .layout, .hero { grid-template-columns: 1fr; } }
+    @media(max-width: 900px) {
+      .layout, .hero { grid-template-columns: 1fr; }
+      .cal-cell { min-height: 62px; padding: 4px; }
+    }
   </style>
 </head>
 <body>
@@ -201,6 +346,44 @@
           <ul class="hero-bullets" id="hero-bullets"></ul>
         </div>
         <div class="hero-media"></div>
+      </section>
+
+      <!-- Collapsible Skool-Style Event Calendar -->
+      <section class="cal-section card" id="cal-section">
+        <div class="cal-banner" onclick="toggleCalendarBanner()">
+          <div class="cal-banner-left">
+            <span class="cal-banner-title">&#128197; Live Events &amp; Calendar</span>
+            <span class="cal-next-pill" id="cal-next-summary">Loading events...</span>
+          </div>
+          <span class="cal-chevron">&#9660;</span>
+        </div>
+
+        <div class="cal-body">
+          <div class="cal-toolbar">
+            <div class="cal-nav">
+              <button type="button" class="btn ghost small" onclick="calGoToday()">Today</button>
+              <button type="button" class="cal-icon-btn" onclick="calChangeMonth(-1)" title="Previous Month">&#8249;</button>
+              <div class="cal-month-label" id="cal-month-label">November 2026</div>
+              <button type="button" class="cal-icon-btn" onclick="calChangeMonth(1)" title="Next Month">&#8250;</button>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <button type="button" class="btn ghost small" id="cal-view-toggle" onclick="toggleCalendarViewMode()">List View</button>
+              <button type="button" class="cal-add-btn hidden" id="cal-admin-add-btn" onclick="openEventModal(null)" title="Add Event">+</button>
+            </div>
+          </div>
+
+          <div id="cal-grid-container" class="cal-grid-wrap">
+            <div class="cal-weekdays">
+              <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+            </div>
+            <div class="cal-days" id="cal-days-grid"></div>
+          </div>
+
+          <div id="cal-list-container" class="hidden"></div>
+
+          <!-- Expanded Selected Event Details -->
+          <div id="cal-event-detail" class="hidden"></div>
+        </div>
       </section>
 
       <section class="community card">
@@ -288,6 +471,84 @@
   </div>
 </div>
 
+<!-- Admin Add / Edit Event Modal -->
+<div id="event-modal" class="modal-overlay hidden" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="modal-box" style="text-align: left;">
+    <h3 id="event-modal-title" style="color: var(--primary);">Add Event</h3>
+    <input type="hidden" id="ev-id">
+
+    <label>Event Title</label>
+    <input type="text" id="ev-title" maxlength="60" placeholder="e.g. Live Q&A & Co-Working Session">
+
+    <div class="modal-grid-2">
+      <div>
+        <label>Date</label>
+        <input type="date" id="ev-date">
+      </div>
+      <div>
+        <label>Start Time</label>
+        <input type="time" id="ev-time" value="16:00">
+      </div>
+    </div>
+
+    <div class="modal-grid-2">
+      <div>
+        <label>Duration</label>
+        <select id="ev-duration">
+          <option value="30">30 minutes</option>
+          <option value="45">45 minutes</option>
+          <option value="60" selected>1 hour</option>
+          <option value="90">1.5 hours</option>
+          <option value="120">2 hours</option>
+        </select>
+      </div>
+      <div>
+        <label>Recurring</label>
+        <select id="ev-recurring">
+          <option value="none">One-time event</option>
+          <option value="weekly">Weekly (same day)</option>
+          <option value="monthly">Monthly</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="modal-grid-2">
+      <div>
+        <label>Location Type</label>
+        <select id="ev-loc-type">
+          <option value="Zoom">Zoom</option>
+          <option value="Google Meet">Google Meet</option>
+          <option value="Address">In-Person Address</option>
+          <option value="Link">Custom Link</option>
+        </select>
+      </div>
+      <div>
+        <label>Who Can Enroll</label>
+        <select id="ev-access">
+          <option value="all">All (Public &amp; Members)</option>
+          <option value="free">Free &amp; Paid Members</option>
+          <option value="paid">Paid Members Only</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Meeting Link or Physical Address (Revealed After Enrollment)</label>
+    <input type="text" id="ev-loc-url" placeholder="https://zoom.us/j/... or venue address">
+
+    <label>Cover Image URL (Optional — Google Drive or direct image URL)</label>
+    <input type="text" id="ev-cover" placeholder="https://drive.google.com/file/d/...">
+
+    <label>Event Description</label>
+    <textarea id="ev-desc" rows="3" placeholder="What will members learn or experience in this session?"></textarea>
+
+    <p id="ev-modal-err" class="form-error"></p>
+    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px;">
+      <button type="button" class="btn ghost small" onclick="document.getElementById('event-modal').classList.add('hidden')">Cancel</button>
+      <button type="button" class="btn cta small" id="ev-save-btn" onclick="saveEvent()">Save Event</button>
+    </div>
+  </div>
+</div>
+
 <!-- Change Name or Password Modal -->
 <div id="change-password-modal" class="modal-overlay hidden" onclick="if(event.target===this)this.classList.add('hidden')">
   <div class="modal-box" style="text-align: left;">
@@ -314,6 +575,13 @@ let CMS_ITEMS = [];
 let LESSONS = [];
 let CURRENT_LESSON = null;
 
+// Calendar State
+let ALL_EVENTS = [];
+let CAL_YEAR = new Date().getFullYear();
+let CAL_MONTH = new Date().getMonth();
+let CAL_VIEW_MODE = 'month';
+let SELECTED_EVENT_ID = null;
+
 function formatDriveUrl(url) {
   const raw = String(url || '').trim();
   if (!raw) return '';
@@ -324,10 +592,12 @@ function formatDriveUrl(url) {
   return raw;
 }
 
+function isUserAdmin() {
+  return localStorage.getItem('is_admin') === '1' || localStorage.getItem('member_number') === '1';
+}
+
 function userHasPaidAccess() {
-  return localStorage.getItem('is_paid') === '1'
-    || localStorage.getItem('is_admin') === '1'
-    || localStorage.getItem('member_number') === '1';
+  return localStorage.getItem('is_paid') === '1' || isUserAdmin();
 }
 
 function parseCSV(text) {
@@ -400,8 +670,7 @@ async function applySettings() {
 
     const bulletEl = document.getElementById('hero-bullets');
     if (heroPoints) {
-      const cleaned = heroPoints.replace(/[\r\n]+/g, ' ');
-      const bullets = cleaned.split('|').map(p => p.trim()).filter(Boolean);
+      const bullets = heroPoints.split(/[\r\n|]+/).map(p => p.trim()).filter(Boolean);
       bulletEl.innerHTML = bullets.map(b => `<li>${escapeHtml(b)}</li>`).join('');
     }
 
@@ -427,6 +696,7 @@ function showHome() {
   hideViews();
   document.getElementById('view-home').classList.remove('hidden');
   renderHeader();
+  loadEvents();
   renderLessons();
   renderCommunity();
 }
@@ -448,7 +718,13 @@ function renderHeader() {
   const token = localStorage.getItem('token');
   const name = localStorage.getItem('user_name') || 'Member';
   const num = localStorage.getItem('member_number') || '1';
-  const isAdmin = localStorage.getItem('is_admin') === '1' || num === '1';
+  const isAdmin = isUserAdmin();
+
+  const addBtn = document.getElementById('cal-admin-add-btn');
+  if (addBtn) {
+    if (token && isAdmin) addBtn.classList.remove('hidden');
+    else addBtn.classList.add('hidden');
+  }
 
   if (token) {
     const adminLink = isAdmin ? `<a href="/admin.html" class="btn small ghost">Admin</a>` : '';
@@ -468,7 +744,490 @@ function renderHeader() {
 }
 
 // ============================================================================
-// CMS PARSER (11-Column Schema: Lesson, Module, Item #, Name, Active, Paid, Type, Title, Content, Extra1, Extra2)
+// SKOOL-STYLE COLLAPSIBLE CALENDAR LOGIC
+// ============================================================================
+
+function toggleCalendarBanner() {
+  document.getElementById('cal-section').classList.toggle('open');
+}
+
+function toggleCalendarViewMode() {
+  CAL_VIEW_MODE = CAL_VIEW_MODE === 'month' ? 'list' : 'month';
+  document.getElementById('cal-view-toggle').innerText = CAL_VIEW_MODE === 'month' ? 'List View' : 'Month Grid';
+  renderCalendar();
+}
+
+function calGoToday() {
+  const now = new Date();
+  CAL_YEAR = now.getFullYear();
+  CAL_MONTH = now.getMonth();
+  renderCalendar();
+}
+
+function calChangeMonth(delta) {
+  CAL_MONTH += delta;
+  if (CAL_MONTH > 11) { CAL_MONTH = 0; CAL_YEAR++; }
+  if (CAL_MONTH < 0) { CAL_MONTH = 11; CAL_YEAR--; }
+  renderCalendar();
+}
+
+async function loadEvents() {
+  try {
+    const token = localStorage.getItem('token');
+    const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+    const res = await fetch('/api/events', { headers });
+    const data = await res.json();
+    ALL_EVENTS = data.events || [];
+    updateNextEventSummary();
+    renderCalendar();
+    if (SELECTED_EVENT_ID) renderEventDetail(SELECTED_EVENT_ID);
+  } catch (err) {
+    document.getElementById('cal-next-summary').innerText = 'View Schedule';
+  }
+}
+
+function updateNextEventSummary() {
+  const pill = document.getElementById('cal-next-summary');
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const upcoming = ALL_EVENTS.filter(e => e.event_date >= todayStr);
+  if (upcoming.length === 0) {
+    pill.innerText = isUserAdmin() ? 'No upcoming events — Click to add +' : 'No upcoming events';
+    return;
+  }
+  const next = upcoming[0];
+  pill.innerText = `Next: ${next.title} (${formatNiceDate(next.event_date)} at ${formatNiceTime(next.start_time)})`;
+}
+
+function getEventsForMonth(year, month) {
+  const occurrences = [];
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  for (const ev of ALL_EVENTS) {
+    const [ey, em, ed] = ev.event_date.split('-').map(Number);
+    if (!ey || !em || !ed) continue;
+    const baseDate = new Date(ey, em - 1, ed);
+
+    if (ev.recurring === 'none') {
+      if (ey === year && em - 1 === month) {
+        occurrences.push({ ...ev, display_date: ev.event_date });
+      }
+    } else if (ev.recurring === 'weekly') {
+      const targetDow = baseDate.getDay();
+      for (let d = 1; d <= daysInMonth; d++) {
+        const cur = new Date(year, month, d);
+        if (cur >= baseDate && cur.getDay() === targetDow) {
+          const ds = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          occurrences.push({ ...ev, display_date: ds });
+        }
+      }
+    } else if (ev.recurring === 'monthly') {
+      const cur = new Date(year, month, Math.min(ed, daysInMonth));
+      if (cur >= baseDate) {
+        const ds = `${year}-${String(month + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`;
+        occurrences.push({ ...ev, display_date: ds });
+      }
+    }
+  }
+  return occurrences;
+}
+
+function renderCalendar() {
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('cal-month-label').innerText = `${monthNames[CAL_MONTH]} ${CAL_YEAR}`;
+
+  const occurrences = getEventsForMonth(CAL_YEAR, CAL_MONTH);
+  const gridContainer = document.getElementById('cal-grid-container');
+  const listContainer = document.getElementById('cal-list-container');
+
+  if (CAL_VIEW_MODE === 'list') {
+    gridContainer.classList.add('hidden');
+    listContainer.classList.remove('hidden');
+    if (occurrences.length === 0) {
+      listContainer.innerHTML = '<p class="community-sub" style="text-align:center; padding:18px 0;">No events scheduled this month.</p>';
+      return;
+    }
+    listContainer.innerHTML = occurrences.map(ev => `
+      <div class="post" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:12px;" onclick="selectEvent(${ev.id}, '${ev.display_date}')">
+        <div>
+          <div style="font-weight:800; color:var(--primary);">${escapeHtml(ev.title)}</div>
+          <div class="post-date">${formatNiceDate(ev.display_date)} &middot; ${formatNiceTime(ev.start_time)} (${ev.duration_mins}m)</div>
+        </div>
+        <span class="event-badge badge-${ev.access_level}">${ev.access_level}</span>
+      </div>
+    `).join('');
+    return;
+  }
+
+  gridContainer.classList.remove('hidden');
+  listContainer.classList.add('hidden');
+
+  const firstDay = new Date(CAL_YEAR, CAL_MONTH, 1).getDay();
+  const startOffset = (firstDay + 6) % 7; // Monday = 0
+  const daysInMonth = new Date(CAL_YEAR, CAL_MONTH + 1, 0).getDate();
+  const prevMonthDays = new Date(CAL_YEAR, CAL_MONTH, 0).getDate();
+  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  let html = '';
+  for (let i = 0; i < totalCells; i++) {
+    let dayNum = 0;
+    let dateStr = '';
+    let isOther = false;
+
+    if (i < startOffset) {
+      dayNum = prevMonthDays - startOffset + i + 1;
+      isOther = true;
+    } else if (i >= startOffset + daysInMonth) {
+      dayNum = i - (startOffset + daysInMonth) + 1;
+      isOther = true;
+    } else {
+      dayNum = i - startOffset + 1;
+      dateStr = `${CAL_YEAR}-${String(CAL_MONTH + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+    }
+
+    const isToday = dateStr === todayStr;
+    const dayEvents = dateStr ? occurrences.filter(o => o.display_date === dateStr) : [];
+
+    html += `
+      <div class="cal-cell ${isOther ? 'other-month' : ''} ${isToday ? 'today' : ''}">
+        <span class="cal-day-num">${dayNum}</span>
+        ${dayEvents.map(ev => `
+          <div class="cal-event-chip ${SELECTED_EVENT_ID === ev.id ? 'selected' : ''}"
+               onclick="event.stopPropagation(); selectEvent(${ev.id}, '${ev.display_date}')"
+               title="${escapeHtml(formatNiceTime(ev.start_time) + ' - ' + ev.title)}">
+            ${escapeHtml(formatNiceTime(ev.start_time))} ${escapeHtml(ev.title)}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+  document.getElementById('cal-days-grid').innerHTML = html;
+}
+
+function selectEvent(eventId, displayDate) {
+  SELECTED_EVENT_ID = eventId;
+  renderCalendar();
+  renderEventDetail(eventId, displayDate);
+}
+
+function renderEventDetail(eventId, overrideDate) {
+  const host = document.getElementById('cal-event-detail');
+  const ev = ALL_EVENTS.find(e => e.id === eventId);
+  if (!ev) {
+    host.classList.add('hidden');
+    return;
+  }
+
+  const activeDate = overrideDate || ev.event_date;
+  const token = localStorage.getItem('token');
+  const isAdmin = isUserAdmin();
+  const isPaid = userHasPaidAccess();
+  const isApproved = (localStorage.getItem('user_status') || 'Approved') === 'Approved';
+  const coverSrc = formatDriveUrl(ev.cover_url);
+
+  const accessLabels = {
+    all: 'Open to Everyone',
+    free: 'Free & Paid Members',
+    paid: 'Paid Members Only'
+  };
+
+  let actionHtml = '';
+  if (ev.enrolled || isAdmin) {
+    const locDisplay = ev.location_url
+      ? (ev.location_url.startsWith('http')
+          ? `<a href="${escapeHtml(ev.location_url)}" target="_blank" rel="noopener noreferrer" class="btn cta small">Join ${escapeHtml(ev.location_type)} &#8599;</a>`
+          : `<span style="font-weight:800; color:var(--primary);">${escapeHtml(ev.location_type)}: ${escapeHtml(ev.location_url)}</span>`)
+      : `<span style="font-weight:700; color:var(--slate);">Location details will be posted soon.</span>`;
+
+    actionHtml = `
+      <div class="event-link-box">
+        <div>
+          <div style="font-size:.82rem; font-weight:800; color:var(--green); text-transform:uppercase;">&#10003; ${isAdmin && !ev.enrolled ? 'Admin Preview' : 'Enrolled'} (${ev.rsvp_count} attending)</div>
+          <div style="font-size:.9rem; color:var(--primary); font-weight:700;">Your ${escapeHtml(ev.location_type)} access is unlocked:</div>
+        </div>
+        ${locDisplay}
+      </div>
+    `;
+  } else if (ev.access_level === 'paid' && !isPaid) {
+    actionHtml = `
+      <div class="locked-notice">
+        &#128274; Paid Members Only — Upgrade your membership to enroll and unlock the ${escapeHtml(ev.location_type)} link.
+      </div>
+    `;
+  } else if (ev.access_level === 'free' && (!token || !isApproved)) {
+    actionHtml = `
+      <div class="locked-notice" style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+        <span>Members Only — Log in or create a free account to enroll.</span>
+        <button type="button" class="btn cta small" onclick="showAuth('login')">Log In to Enroll</button>
+      </div>
+    `;
+  } else if (ev.access_level === 'all' && !token) {
+    actionHtml = `
+      <div style="margin-top:12px; padding:12px; background:#f8fafc; border-radius:10px; border:1.5px solid #e2e8f0;">
+        <div style="font-size:.85rem; font-weight:800; color:var(--primary); margin-bottom:8px;">Enroll for Free to Unlock the ${escapeHtml(ev.location_type)} Link:</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <input type="text" id="guest-rsvp-name" placeholder="Your Name" style="flex:1; min-width:130px; padding:8px 12px; border-radius:8px; border:1.5px solid #cbd5e1;">
+          <input type="email" id="guest-rsvp-email" placeholder="Your Email" style="flex:1; min-width:160px; padding:8px 12px; border-radius:8px; border:1.5px solid #cbd5e1;">
+          <button type="button" class="btn cta small" onclick="enrollInEvent(${ev.id}, '${activeDate}')">Enroll Free</button>
+        </div>
+        <p id="rsvp-err-${ev.id}" class="form-error"></p>
+      </div>
+    `;
+  } else {
+    actionHtml = `
+      <div style="margin-top:12px; display:flex; align-items:center; gap:12px;">
+        <button type="button" class="btn cta small" id="enroll-btn-${ev.id}" onclick="enrollInEvent(${ev.id}, '${activeDate}')">Enroll &amp; Reveal ${escapeHtml(ev.location_type)}</button>
+        <span style="font-size:.85rem; font-weight:700; color:var(--slate);">${ev.rsvp_count} attending</span>
+      </div>
+      <p id="rsvp-err-${ev.id}" class="form-error"></p>
+    `;
+  }
+
+  const googleCalUrl = buildGoogleCalendarUrl(ev, activeDate);
+  const adminButtons = isAdmin ? `
+    <div style="display:flex; gap:6px;">
+      <button type="button" class="btn ghost small" onclick="openEventModal(${ev.id})">Edit</button>
+      <button type="button" class="btn danger small" onclick="deleteEvent(${ev.id})">Delete</button>
+    </div>
+  ` : '';
+
+  host.classList.remove('hidden');
+  host.innerHTML = `
+    <div class="event-detail-card">
+      ${coverSrc ? `<img class="event-cover" src="${escapeHtml(coverSrc)}" alt="${escapeHtml(ev.title)}">` : ''}
+      <div class="event-detail-body">
+        <div class="event-meta-row">
+          <span class="event-badge badge-${ev.access_level}">${accessLabels[ev.access_level] || 'Event'}</span>
+          <span class="post-date">&#128197; ${formatNiceDate(activeDate)} &middot; &#128337; ${formatNiceTime(ev.start_time)} (${ev.duration_mins} mins)</span>
+          ${ev.recurring !== 'none' ? `<span class="cal-next-pill">&#128257; ${escapeHtml(ev.recurring)}</span>` : ''}
+        </div>
+        <h3 style="margin:0 0 8px; font-size:1.25rem; font-weight:800; color:var(--primary);">${escapeHtml(ev.title)}</h3>
+        ${ev.description ? `<div class="cms-text">${escapeHtml(ev.description)}</div>` : ''}
+        ${actionHtml}
+        <div class="cal-export-row">
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <a href="${googleCalUrl}" target="_blank" rel="noopener noreferrer" class="btn ghost small">+ Google Calendar</a>
+            <button type="button" class="btn ghost small" onclick="downloadIcsFile(${ev.id}, '${activeDate}')">&#128229; Apple / Outlook (.ics)</button>
+          </div>
+          ${adminButtons}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function enrollInEvent(eventId, activeDate) {
+  const errEl = document.getElementById('rsvp-err-' + eventId);
+  if (errEl) errEl.innerText = '';
+  const guestNameEl = document.getElementById('guest-rsvp-name');
+  const guestEmailEl = document.getElementById('guest-rsvp-email');
+
+  try {
+    const token = localStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+
+    const res = await fetch('/api/events/enroll', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        event_id: eventId,
+        guest_name: guestNameEl ? guestNameEl.value : '',
+        guest_email: guestEmailEl ? guestEmailEl.value : ''
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      const idx = ALL_EVENTS.findIndex(e => e.id === eventId);
+      if (idx !== -1) {
+        ALL_EVENTS[idx].enrolled = true;
+        ALL_EVENTS[idx].location_url = data.location_url || ALL_EVENTS[idx].location_url;
+        ALL_EVENTS[idx].rsvp_count = data.rsvp_count;
+      }
+      renderEventDetail(eventId, activeDate);
+    } else if (errEl) {
+      errEl.innerText = data.error || 'Could not enroll.';
+    }
+  } catch (err) {
+    if (errEl) errEl.innerText = 'Network error enrolling in event.';
+  }
+}
+
+function openEventModal(eventId) {
+  document.getElementById('ev-modal-err').innerText = '';
+  const modal = document.getElementById('event-modal');
+  if (!eventId) {
+    document.getElementById('event-modal-title').innerText = 'Add Event';
+    document.getElementById('ev-id').value = '';
+    document.getElementById('ev-title').value = '';
+    document.getElementById('ev-date').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('ev-time').value = '16:00';
+    document.getElementById('ev-duration').value = '60';
+    document.getElementById('ev-recurring').value = 'none';
+    document.getElementById('ev-loc-type').value = 'Zoom';
+    document.getElementById('ev-access').value = 'all';
+    document.getElementById('ev-loc-url').value = '';
+    document.getElementById('ev-cover').value = '';
+    document.getElementById('ev-desc').value = '';
+  } else {
+    const ev = ALL_EVENTS.find(e => e.id === eventId);
+    if (!ev) return;
+    document.getElementById('event-modal-title').innerText = 'Edit Event';
+    document.getElementById('ev-id').value = ev.id;
+    document.getElementById('ev-title').value = ev.title;
+    document.getElementById('ev-date').value = ev.event_date;
+    document.getElementById('ev-time').value = ev.start_time;
+    document.getElementById('ev-duration').value = String(ev.duration_mins || 60);
+    document.getElementById('ev-recurring').value = ev.recurring || 'none';
+    document.getElementById('ev-loc-type').value = ev.location_type || 'Zoom';
+    document.getElementById('ev-access').value = ev.access_level || 'all';
+    document.getElementById('ev-loc-url').value = ev.location_url || '';
+    document.getElementById('ev-cover').value = ev.cover_url || '';
+    document.getElementById('ev-desc').value = ev.description || '';
+  }
+  modal.classList.remove('hidden');
+}
+
+async function saveEvent() {
+  const errEl = document.getElementById('ev-modal-err');
+  const btn = document.getElementById('ev-save-btn');
+  errEl.innerText = '';
+
+  const payload = {
+    id: document.getElementById('ev-id').value || null,
+    title: document.getElementById('ev-title').value.trim(),
+    event_date: document.getElementById('ev-date').value,
+    start_time: document.getElementById('ev-time').value,
+    duration_mins: document.getElementById('ev-duration').value,
+    recurring: document.getElementById('ev-recurring').value,
+    location_type: document.getElementById('ev-loc-type').value,
+    access_level: document.getElementById('ev-access').value,
+    location_url: document.getElementById('ev-loc-url').value.trim(),
+    cover_url: document.getElementById('ev-cover').value.trim(),
+    description: document.getElementById('ev-desc').value.trim()
+  };
+
+  if (!payload.title || !payload.event_date || !payload.start_time) {
+    errEl.innerText = 'Title, date, and start time are required.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerText = 'Saving...';
+
+  try {
+    const res = await fetch('/api/events/save', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + localStorage.getItem('token')
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      document.getElementById('event-modal').classList.add('hidden');
+      await loadEvents();
+    } else {
+      errEl.innerText = data.error || 'Could not save event.';
+    }
+  } catch (err) {
+    errEl.innerText = 'Network error saving event.';
+  }
+
+  btn.disabled = false;
+  btn.innerText = 'Save Event';
+}
+
+async function deleteEvent(eventId) {
+  if (!confirm('Delete this event permanently?')) return;
+  try {
+    const res = await fetch('/api/events/delete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + localStorage.getItem('token')
+      },
+      body: JSON.stringify({ id: eventId })
+    });
+    if (res.ok) {
+      if (SELECTED_EVENT_ID === eventId) {
+        SELECTED_EVENT_ID = null;
+        document.getElementById('cal-event-detail').classList.add('hidden');
+      }
+      await loadEvents();
+    }
+  } catch (err) {}
+}
+
+function buildGoogleCalendarUrl(ev, dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [hh, mm] = (ev.start_time || '12:00').split(':').map(Number);
+  const start = new Date(y, m - 1, d, hh, mm);
+  const end = new Date(start.getTime() + (ev.duration_mins || 60) * 60000);
+  const fmt = (dt) => dt.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+
+  const details = [ev.description, ev.location_url ? `${ev.location_type}: ${ev.location_url}` : ''].filter(Boolean).join('\n\n');
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: ev.title,
+    dates: `${fmt(start)}/${fmt(end)}`,
+    details: details,
+    location: ev.location_url || ev.location_type || ''
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+function downloadIcsFile(eventId, dateStr) {
+  const ev = ALL_EVENTS.find(e => e.id === eventId);
+  if (!ev) return;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [hh, mm] = (ev.start_time || '12:00').split(':').map(Number);
+  const start = new Date(y, m - 1, d, hh, mm);
+  const end = new Date(start.getTime() + (ev.duration_mins || 60) * 60000);
+  const fmt = (dt) => dt.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//CICT Studio//Event Calendar//EN',
+    'BEGIN:VEVENT',
+    `UID:event-${ev.id}-${dateStr}@cict.co`,
+    `DTSTAMP:${fmt(new Date())}`,
+    `DTSTART:${fmt(start)}`,
+    `DTEND:${fmt(end)}`,
+    `SUMMARY:${ev.title}`,
+    `DESCRIPTION:${(ev.description || '').replace(/\n/g, '\\n')}`,
+    `LOCATION:${ev.location_url || ev.location_type || ''}`,
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${ev.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.ics`;
+  a.click();
+}
+
+function formatNiceDate(dateStr) {
+  const [y, m, d] = (dateStr || '').split('-').map(Number);
+  if (!y || !m || !d) return dateStr;
+  const dt = new Date(y, m - 1, d);
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatNiceTime(timeStr) {
+  const [hh, mm] = (timeStr || '00:00').split(':').map(Number);
+  const ampm = hh >= 12 ? 'PM' : 'AM';
+  const h12 = hh % 12 || 12;
+  return `${h12}:${String(mm).padStart(2, '0')} ${ampm}`;
+}
+
+// ============================================================================
+// CMS PARSER (11-Column Schema)
 // ============================================================================
 
 async function renderLessons() {
@@ -568,7 +1327,7 @@ function openLesson(idx) {
   }
 
   const status = localStorage.getItem('user_status') || 'Approved';
-  const isAdmin = localStorage.getItem('is_admin') === '1' || localStorage.getItem('member_number') === '1';
+  const isAdmin = isUserAdmin();
   if (status !== 'Approved' && !isAdmin) {
     alert('Your account is currently pending approval. Once approved by the administrator, all lessons will unlock.');
     return;
