@@ -51,6 +51,12 @@ function parseCSV(text) {
   return rows;
 }
 
+function extractSheetId(urlOrId) {
+  const raw = String(urlOrId || '').trim();
+  const match = raw.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : raw;
+}
+
 async function getTenantConfig(hostname, env) {
   const now = Date.now();
   if (!tenantCache.data || now > tenantCache.expiresAt) {
@@ -505,6 +511,7 @@ export default {
               body: JSON.stringify({
                 action: 'save_answer',
                 sheetUrl: tenant.ams_sheet_url,
+                sheetId: extractSheetId(tenant.ams_sheet_url),
                 lesson_tab: lessonTab,
                 member_number: user.member_number || String(user.id),
                 name: user.name,
@@ -584,6 +591,7 @@ export default {
               body: JSON.stringify({
                 action: 'save_answer',
                 sheetUrl: tenant.ams_sheet_url,
+                sheetId: extractSheetId(tenant.ams_sheet_url),
                 lesson_tab: (body.lesson_tab || 'Answers').trim(),
                 member_number: user.member_number || String(user.id),
                 name: user.name,
@@ -610,7 +618,7 @@ export default {
       // 9. EVENTS & CALENDAR ROUTES
       // ======================================================================
 
-      // 9a. GET /api/events (Publicly viewable; location_url masked until enrolled)
+      // 9a. GET /api/events
       if (path === '/api/events' && request.method === 'GET') {
         const user = await getAuthUser(request, db);
         const isAdminUser = user && (Number(user.is_admin) === 1 || String(user.member_number) === '1');
@@ -652,7 +660,7 @@ export default {
         return jsonResponse({ events: items });
       }
 
-// 9b. POST /api/events/enroll
+      // 9b. POST /api/events/enroll
       if (path === '/api/events/enroll' && request.method === 'POST') {
         const body = await request.json();
         const eventId = Number(body.event_id);
@@ -700,6 +708,7 @@ export default {
               body: JSON.stringify({
                 action: 'save_rsvp',
                 sheetUrl: tenant.ams_sheet_url,
+                sheetId: extractSheetId(tenant.ams_sheet_url),
                 event_id: eventId,
                 event_title: ev.title,
                 event_date: ev.event_date,
@@ -735,7 +744,7 @@ export default {
         return jsonResponse({ error: 'Account ' + adminUser.email + ' is not marked as Admin.' }, 403);
       }
 
-      // 9c. POST /api/events/save (Admin Create/Edit Event)
+      // 9c. POST /api/events/save
       if (path === '/api/events/save' && request.method === 'POST') {
         const body = await request.json();
         const id = body.id ? Number(body.id) : null;
@@ -802,7 +811,7 @@ export default {
         return jsonResponse({ ok: true });
       }
 
-      // 9d. POST /api/events/delete (Admin Delete Event)
+      // 9d. POST /api/events/delete
       if (path === '/api/events/delete' && request.method === 'POST') {
         const body = await request.json();
         const id = Number(body.id);
@@ -861,7 +870,7 @@ export default {
 
       if (path === '/api/admin/sync-members' && request.method === 'POST') {
         if (!tenant.apps_script_url || !tenant.ams_sheet_url) {
-          return jsonResponse({ error: 'Apps Script URL or AMS Sheet URL is missing in Master Tenants Sheet.' }, 400);
+          return jsonResponse({ error: 'Apps Script URL or AMS Sheet URL is missing.' }, 400);
         }
 
         const usersRes = await db
@@ -882,12 +891,26 @@ export default {
           body: JSON.stringify({
             action: 'sync_members',
             sheetUrl: tenant.ams_sheet_url,
+            sheetId: extractSheetId(tenant.ams_sheet_url),
             members: usersRes.results || [],
           }),
         });
 
-        const scriptJson = await scriptRes.json();
-        return jsonResponse(scriptJson);
+        const rawText = await scriptRes.text();
+        try {
+          return jsonResponse(JSON.parse(rawText));
+        } catch (_) {
+          const titleMatch = rawText.match(/<title>(.*?)<\/title>/i);
+          return jsonResponse(
+            {
+              error:
+                'Google Apps Script returned HTML (' +
+                (titleMatch ? titleMatch[1] : 'HTTP ' + scriptRes.status) +
+                '). Check AMS_WEBHOOK_URL in Cloudflare Worker Variables.',
+            },
+            502
+          );
+        }
       }
 
       if (path === '/api/admin/settings' && request.method === 'POST') {
