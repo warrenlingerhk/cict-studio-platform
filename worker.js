@@ -474,6 +474,19 @@ export default {
         }
       }
 
+      // 8a. GET /api/my-answers
+      if (path === '/api/my-answers' && request.method === 'GET') {
+        const user = await getAuthUser(request, db);
+        if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+        const rows = await db
+          .prepare('SELECT lesson_tab, module, question, answer FROM answers WHERE user_id = ? ORDER BY id ASC')
+          .bind(user.id)
+          .all();
+
+        return jsonResponse({ answers: rows.results || [] });
+      }
+
       // 8. POST /api/answers
       if (path === '/api/answers' && request.method === 'POST') {
         const user = await getAuthUser(request, db);
