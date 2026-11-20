@@ -18,5 +18,10 @@ binding = "aethera"
 database_name = "aethera_db"
 database_id = "53d144de-d766-44af-b7ec-0f6c9017a775"
 
+[[d1_databases]]
+binding = "christine"
+database_name = "christine-db"
+database_id = "3c51774c-62cd-45e2-934b-6105cb6eda2c"
+
 [vars]
 AMS_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwnKwZBct5XVwcM0EComP6P8WGaA0G5zM05KBCrsdM_rNANrkLWdGJHL4_uB4qIV-VR/exec"
