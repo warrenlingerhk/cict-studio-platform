@@ -652,7 +652,7 @@ export default {
         return jsonResponse({ events: items });
       }
 
-      // 9b. POST /api/events/enroll
+// 9b. POST /api/events/enroll
       if (path === '/api/events/enroll' && request.method === 'POST') {
         const body = await request.json();
         const eventId = Number(body.event_id);
@@ -675,20 +675,44 @@ export default {
 
         const rsvpEmail = user ? user.email.toLowerCase() : (body.guest_email || '').trim().toLowerCase();
         const rsvpName = user ? user.name : (body.guest_name || 'Guest').trim();
+        const memberNum = user ? (user.member_number || String(user.id)) : 'Guest';
         if (!rsvpEmail) {
           return jsonResponse({ error: 'Please enter your email address to enroll.' }, 400);
         }
 
+        const enrolledAt = new Date().toISOString();
         await db
           .prepare(
             `INSERT INTO event_rsvps (event_id, user_id, user_email, user_name, created_at)
              VALUES (?, ?, ?, ?, ?)
              ON CONFLICT(event_id, user_email) DO NOTHING`
           )
-          .bind(eventId, user ? user.id : 0, rsvpEmail, rsvpName, new Date().toISOString())
+          .bind(eventId, user ? user.id : 0, rsvpEmail, rsvpName, enrolledAt)
           .run();
 
         const countRow = await db.prepare('SELECT COUNT(*) as cnt FROM event_rsvps WHERE event_id = ?').bind(eventId).first();
+
+        if (tenant.apps_script_url && tenant.ams_sheet_url) {
+          ctx.waitUntil(
+            fetch(tenant.apps_script_url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'save_rsvp',
+                sheetUrl: tenant.ams_sheet_url,
+                event_id: eventId,
+                event_title: ev.title,
+                event_date: ev.event_date,
+                start_time: ev.start_time,
+                access_level: ev.access_level,
+                member_number: memberNum,
+                name: rsvpName,
+                email: rsvpEmail,
+                enrolled_at: enrolledAt,
+              }),
+            }).catch(() => {})
+          );
+        }
 
         return jsonResponse({
           ok: true,
