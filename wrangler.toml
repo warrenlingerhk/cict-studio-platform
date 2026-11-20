@@ -24,4 +24,4 @@ database_name = "christine-db"
 database_id = "3c51774c-62cd-45e2-934b-6105cb6eda2c"
 
 [vars]
-AMS_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwnKwZBct5XVwcM0EComP6P8WGaA0G5zM05KBCrsdM_rNANrkLWdGJHL4_uB4qIV-VR/exec"
+AMS_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbzJomF52wqZAUcu3StLXG8M41_PzhUwQiK0uoU9kIiHkde5nBQIKj51tcM_7vD0RX9GdA/exec"
