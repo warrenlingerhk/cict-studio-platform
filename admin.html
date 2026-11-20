@@ -248,8 +248,9 @@ async function loadSetupQuestionsAndValues() {
         $('setup-module-title').textContent = title;
       } else if (type === 'text' && content) {
         $('setup-topic-desc').textContent = content;
-      } else if (type === 'answer' && title) {
+ } else if (type === 'answer' && title) {
         const key = mapTitleToKey(title);
+        if (key === 'custom_domain') continue;
         const val = saved[key] || '';
         const isColor = key.endsWith('_color');
         SETUP_FIELDS.push({ key, title });
