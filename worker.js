@@ -70,8 +70,8 @@ async function getTenantConfig(hostname, env) {
         tenants[domain] = {
           domain,
           db_binding: (r[1] || 'DB').trim(),
-          apps_script_url: (r[2] || '').trim(),
-          ams_sheet_url: (r[3] || '').trim(),
+          apps_script_url: (env.AMS_WEBHOOK_URL || '').trim(),
+          ams_sheet_url: (r[2] || '').trim(),
           cms_sheet_url: (r[4] || '').trim(),
           cms_csv_url: (r[5] || '').trim(),
           settings: {
@@ -157,6 +157,39 @@ async function ensureSchema(db) {
         choices TEXT,
         updated_at TEXT DEFAULT (datetime('now')),
         PRIMARY KEY (user_id, poll_key)
+      )`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        event_date TEXT NOT NULL,
+        start_time TEXT NOT NULL,
+        duration_mins INTEGER DEFAULT 60,
+        timezone TEXT DEFAULT 'Asia/Hong_Kong',
+        recurring TEXT DEFAULT 'none',
+        location_type TEXT DEFAULT 'Zoom',
+        location_url TEXT DEFAULT '',
+        description TEXT DEFAULT '',
+        cover_url TEXT DEFAULT '',
+        access_level TEXT DEFAULT 'all',
+        created_at TEXT DEFAULT (datetime('now'))
+      )`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS event_rsvps (
+        event_id INTEGER,
+        user_id INTEGER,
+        user_email TEXT,
+        user_name TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        PRIMARY KEY (event_id, user_email)
       )`
     )
     .run();
@@ -574,6 +607,98 @@ export default {
       }
 
       // ======================================================================
+      // 9. EVENTS & CALENDAR ROUTES
+      // ======================================================================
+
+      // 9a. GET /api/events (Publicly viewable; location_url masked until enrolled)
+      if (path === '/api/events' && request.method === 'GET') {
+        const user = await getAuthUser(request, db);
+        const isAdminUser = user && (Number(user.is_admin) === 1 || String(user.member_number) === '1');
+        const userEmail = user ? String(user.email || '').toLowerCase() : '';
+
+        const eventsRes = await db.prepare('SELECT * FROM events ORDER BY event_date ASC, start_time ASC').all();
+        const rsvpsRes = await db.prepare('SELECT event_id, user_email FROM event_rsvps').all();
+
+        const rsvpCounts = {};
+        const userEnrolledSet = new Set();
+        for (const r of rsvpsRes.results || []) {
+          rsvpCounts[r.event_id] = (rsvpCounts[r.event_id] || 0) + 1;
+          if (userEmail && String(r.user_email || '').toLowerCase() === userEmail) {
+            userEnrolledSet.add(r.event_id);
+          }
+        }
+
+        const items = (eventsRes.results || []).map((ev) => {
+          const enrolled = userEnrolledSet.has(ev.id);
+          const canRevealLink = Boolean(isAdminUser || enrolled);
+          return {
+            id: ev.id,
+            title: ev.title,
+            event_date: ev.event_date,
+            start_time: ev.start_time,
+            duration_mins: ev.duration_mins || 60,
+            timezone: ev.timezone || 'Asia/Hong_Kong',
+            recurring: ev.recurring || 'none',
+            location_type: ev.location_type || 'Zoom',
+            location_url: canRevealLink ? ev.location_url : '',
+            description: ev.description || '',
+            cover_url: ev.cover_url || '',
+            access_level: ev.access_level || 'all',
+            enrolled,
+            rsvp_count: rsvpCounts[ev.id] || 0,
+          };
+        });
+
+        return jsonResponse({ events: items });
+      }
+
+      // 9b. POST /api/events/enroll
+      if (path === '/api/events/enroll' && request.method === 'POST') {
+        const body = await request.json();
+        const eventId = Number(body.event_id);
+        if (!eventId) return jsonResponse({ error: 'Missing event_id' }, 400);
+
+        const ev = await db.prepare('SELECT * FROM events WHERE id = ?').bind(eventId).first();
+        if (!ev) return jsonResponse({ error: 'Event not found.' }, 404);
+
+        const user = await getAuthUser(request, db);
+        const isAdminUser = user && (Number(user.is_admin) === 1 || String(user.member_number) === '1');
+        const isPaidUser = user && (Number(user.is_paid) === 1 || isAdminUser);
+        const isApprovedMember = user && (user.status === 'Approved' || isAdminUser);
+
+        if (ev.access_level === 'paid' && !isPaidUser) {
+          return jsonResponse({ error: 'This event is restricted to Paid Members.' }, 403);
+        }
+        if (ev.access_level === 'free' && !isApprovedMember) {
+          return jsonResponse({ error: 'Please log in with an approved member account to enroll.' }, 401);
+        }
+
+        const rsvpEmail = user ? user.email.toLowerCase() : (body.guest_email || '').trim().toLowerCase();
+        const rsvpName = user ? user.name : (body.guest_name || 'Guest').trim();
+        if (!rsvpEmail) {
+          return jsonResponse({ error: 'Please enter your email address to enroll.' }, 400);
+        }
+
+        await db
+          .prepare(
+            `INSERT INTO event_rsvps (event_id, user_id, user_email, user_name, created_at)
+             VALUES (?, ?, ?, ?, ?)
+             ON CONFLICT(event_id, user_email) DO NOTHING`
+          )
+          .bind(eventId, user ? user.id : 0, rsvpEmail, rsvpName, new Date().toISOString())
+          .run();
+
+        const countRow = await db.prepare('SELECT COUNT(*) as cnt FROM event_rsvps WHERE event_id = ?').bind(eventId).first();
+
+        return jsonResponse({
+          ok: true,
+          enrolled: true,
+          location_url: ev.location_url || '',
+          rsvp_count: countRow?.cnt || 1,
+        });
+      }
+
+      // ======================================================================
       // ADMIN ROUTES
       // ======================================================================
       const adminUser = await getAuthUser(request, db);
@@ -584,6 +709,83 @@ export default {
       const isAdmin = Number(adminUser.is_admin) === 1 || String(adminUser.member_number) === '1';
       if (!isAdmin) {
         return jsonResponse({ error: 'Account ' + adminUser.email + ' is not marked as Admin.' }, 403);
+      }
+
+      // 9c. POST /api/events/save (Admin Create/Edit Event)
+      if (path === '/api/events/save' && request.method === 'POST') {
+        const body = await request.json();
+        const id = body.id ? Number(body.id) : null;
+        const title = (body.title || '').trim();
+        const eventDate = (body.event_date || '').trim();
+        const startTime = (body.start_time || '').trim();
+        const durationMins = Math.max(15, parseInt(body.duration_mins, 10) || 60);
+        const timezone = (body.timezone || 'Asia/Hong_Kong').trim();
+        const recurring = (body.recurring || 'none').trim();
+        const locationType = (body.location_type || 'Zoom').trim();
+        const locationUrl = (body.location_url || '').trim();
+        const description = (body.description || '').trim();
+        const coverUrl = (body.cover_url || '').trim();
+        const accessLevel = ['all', 'free', 'paid'].includes(body.access_level) ? body.access_level : 'all';
+
+        if (!title || !eventDate || !startTime) {
+          return jsonResponse({ error: 'Title, date, and time are required.' }, 400);
+        }
+
+        if (id) {
+          await db
+            .prepare(
+              `UPDATE events SET title = ?, event_date = ?, start_time = ?, duration_mins = ?, timezone = ?,
+               recurring = ?, location_type = ?, location_url = ?, description = ?, cover_url = ?, access_level = ?
+               WHERE id = ?`
+            )
+            .bind(
+              title,
+              eventDate,
+              startTime,
+              durationMins,
+              timezone,
+              recurring,
+              locationType,
+              locationUrl,
+              description,
+              coverUrl,
+              accessLevel,
+              id
+            )
+            .run();
+        } else {
+          await db
+            .prepare(
+              `INSERT INTO events (title, event_date, start_time, duration_mins, timezone, recurring, location_type, location_url, description, cover_url, access_level)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            )
+            .bind(
+              title,
+              eventDate,
+              startTime,
+              durationMins,
+              timezone,
+              recurring,
+              locationType,
+              locationUrl,
+              description,
+              coverUrl,
+              accessLevel
+            )
+            .run();
+        }
+
+        return jsonResponse({ ok: true });
+      }
+
+      // 9d. POST /api/events/delete (Admin Delete Event)
+      if (path === '/api/events/delete' && request.method === 'POST') {
+        const body = await request.json();
+        const id = Number(body.id);
+        if (!id) return jsonResponse({ error: 'Missing event id' }, 400);
+        await db.prepare('DELETE FROM event_rsvps WHERE event_id = ?').bind(id).run();
+        await db.prepare('DELETE FROM events WHERE id = ?').bind(id).run();
+        return jsonResponse({ ok: true });
       }
 
       if (path === '/api/admin/users' && request.method === 'GET') {
