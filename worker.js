@@ -211,6 +211,7 @@ async function ensureSchema(db) {
     'ALTER TABLE users ADD COLUMN last_active_at TEXT',
     'ALTER TABLE users ADD COLUMN last_seen TEXT',
     'ALTER TABLE answers ADD COLUMN member_number TEXT',
+    'ALTER TABLE answers ADD COLUMN user_name TEXT',
     'ALTER TABLE answers ADD COLUMN user_email TEXT',
     'ALTER TABLE answers ADD COLUMN lesson_tab TEXT',
     'ALTER TABLE answers ADD COLUMN module TEXT',
