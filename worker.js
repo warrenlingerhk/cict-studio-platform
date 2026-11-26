@@ -3,6 +3,7 @@
 // ============================================================================
 // MULTI-TENANT SAAS CLOUDFLARE WORKER (worker.js)
 // Routes requests by hostname via Master Tenants Sheet & binds D1 dynamically
+// Sends stable item_code, title, and is_paid_item to Central AMS Apps Script
 // ============================================================================
 
 const MASTER_CSV_URL =
@@ -148,6 +149,9 @@ async function ensureSchema(db) {
         lesson_tab TEXT,
         module TEXT,
         lesson TEXT,
+        item_code TEXT DEFAULT '',
+        title TEXT DEFAULT '',
+        is_paid_item INTEGER DEFAULT 0,
         question TEXT,
         answer TEXT,
         created_at TEXT DEFAULT (datetime('now'))
@@ -216,6 +220,9 @@ async function ensureSchema(db) {
     'ALTER TABLE answers ADD COLUMN lesson_tab TEXT',
     'ALTER TABLE answers ADD COLUMN module TEXT',
     'ALTER TABLE answers ADD COLUMN lesson TEXT',
+    "ALTER TABLE answers ADD COLUMN item_code TEXT DEFAULT ''",
+    "ALTER TABLE answers ADD COLUMN title TEXT DEFAULT ''",
+    'ALTER TABLE answers ADD COLUMN is_paid_item INTEGER DEFAULT 0',
   ];
   for (const sql of alters) {
     try {
@@ -480,7 +487,7 @@ export default {
         if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
 
         const rows = await db
-          .prepare('SELECT lesson_tab, module, question, answer FROM answers WHERE user_id = ? ORDER BY id ASC')
+          .prepare('SELECT item_code, title, is_paid_item, lesson_tab, module, question, answer FROM answers WHERE user_id = ? ORDER BY id ASC')
           .bind(user.id)
           .all();
 
@@ -496,13 +503,16 @@ export default {
         const lessonTab = (body.lesson_tab || 'Answers').trim();
         const moduleName = (body.module || '').trim();
         const lessonName = (body.lesson || '').trim();
+        const itemCode = String(body.item_code || '').trim();
+        const title = String(body.title || body.question || '').trim();
+        const isPaidItem = body.is_paid_item ? 1 : 0;
         const question = (body.question || '').trim();
         const answer = (body.answer || '').trim();
 
         await db
           .prepare(
-            `INSERT INTO answers (user_id, member_number, user_name, user_email, lesson_tab, module, lesson, question, answer)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            `INSERT INTO answers (user_id, member_number, user_name, user_email, lesson_tab, module, lesson, item_code, title, is_paid_item, question, answer)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
           )
           .bind(
             user.id,
@@ -512,6 +522,9 @@ export default {
             lessonTab,
             moduleName,
             lessonName,
+            itemCode,
+            title,
+            isPaidItem,
             question,
             answer
           )
@@ -532,6 +545,9 @@ export default {
                 email: user.email,
                 module: moduleName,
                 lesson: lessonName,
+                item_code: itemCode,
+                title: title,
+                is_paid_item: Boolean(isPaidItem),
                 question,
                 answer,
               }),
@@ -598,6 +614,10 @@ export default {
         const { counts, totalVoters } = extractPollCounts(allVotes.results || []);
 
         if (tenant.apps_script_url && tenant.ams_sheet_url) {
+          const itemCode = String(body.item_code || '').trim();
+          const title = String(body.title || ('[Poll] ' + (body.question || '').trim())).trim();
+          const isPaidItem = Boolean(body.is_paid_item);
+
           ctx.waitUntil(
             fetch(tenant.apps_script_url, {
               method: 'POST',
@@ -612,6 +632,9 @@ export default {
                 email: user.email,
                 module: (body.module || '').trim(),
                 lesson: (body.lesson || '').trim(),
+                item_code: itemCode,
+                title: title,
+                is_paid_item: isPaidItem,
                 question: '[Poll] ' + (body.question || '').trim(),
                 answer: choices.join(', '),
               }),
