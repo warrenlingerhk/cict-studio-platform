@@ -3,11 +3,14 @@
 // ============================================================================
 // MULTI-TENANT SAAS CLOUDFLARE WORKER (worker.js)
 // Routes requests by hostname via Master Tenants Sheet & binds D1 dynamically
-// Sends stable item_code, title, and is_paid_item to Central AMS Apps Script
+// Includes POST /api/auto-enroll (Google-verified auto-approved enrollment)
+// Zero DNS lookups or hardcoded domains
 // ============================================================================
 
 const MASTER_CSV_URL =
   'https://docs.google.com/spreadsheets/d/e/2PACX-1vTgotv2zBG-2uYmMPtCyXUP1z6TtgJ1Cg6WxocccVq29lbixrkiGvpkVawVtxz-_-I-OZHIJNHN58el/pub?gid=0&single=true&output=csv';
+
+const AUTO_ENROLL_SECRET = 'legacycp-studio-enroll-2026';
 
 let tenantCache = { data: null, expiresAt: 0 };
 
@@ -209,6 +212,7 @@ async function ensureSchema(db) {
     "ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'Pending'",
     'ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0',
     'ALTER TABLE users ADD COLUMN is_paid INTEGER DEFAULT 0',
+    'ALTER TABLE users ADD COLUMN google_verified INTEGER DEFAULT 0',
     'ALTER TABLE users ADD COLUMN auth_token TEXT',
     'ALTER TABLE users ADD COLUMN session_count INTEGER DEFAULT 0',
     'ALTER TABLE users ADD COLUMN click_count INTEGER DEFAULT 0',
@@ -260,6 +264,32 @@ function extractPollCounts(rows) {
     }
   }
   return { counts, totalVoters };
+}
+
+async function triggerAmsMemberSync(db, tenant) {
+  if (!tenant.apps_script_url || !tenant.ams_sheet_url) return;
+  const usersRes = await db
+    .prepare(
+      `SELECT u.member_number, u.name, u.email, u.status, u.is_paid, u.is_admin,
+        u.session_count, u.click_count, u.created_at, u.last_seen,
+        (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) AS post_count,
+        (SELECT COUNT(DISTINCT lesson_tab) FROM answers a WHERE a.user_id = u.id) AS lessons_done,
+        (SELECT COUNT(DISTINCT module) FROM answers a WHERE a.user_id = u.id AND a.module != '') AS modules_done
+       FROM users u
+       ORDER BY CAST(u.member_number AS INTEGER) ASC, u.id ASC`
+    )
+    .all();
+
+  await fetch(tenant.apps_script_url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'sync_members',
+      sheetUrl: tenant.ams_sheet_url,
+      sheetId: extractSheetId(tenant.ams_sheet_url),
+      members: usersRes.results || [],
+    }),
+  }).catch(() => {});
 }
 
 export default {
@@ -338,15 +368,16 @@ export default {
         const isFirstUser = nextNum === '1';
         const status = isFirstUser ? 'Approved' : 'Pending';
         const isAdmin = isFirstUser ? 1 : 0;
+        const googleVerified = /@(gmail|googlemail)\.com$/i.test(email) ? 1 : 0;
         const token = generateToken();
         const nowIso = new Date().toISOString();
 
         await db
           .prepare(
-            `INSERT INTO users (member_number, name, email, password, status, is_admin, is_paid, auth_token, session_count, click_count, last_active_at, created_at, last_seen)
-             VALUES (?, ?, ?, ?, ?, ?, 0, ?, 1, 0, ?, ?, ?)`
+            `INSERT INTO users (member_number, name, email, password, status, is_admin, is_paid, google_verified, auth_token, session_count, click_count, last_active_at, created_at, last_seen)
+             VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, 1, 0, ?, ?, ?)`
           )
-          .bind(nextNum, name, email, password, status, isAdmin, token, nowIso, nowIso, nowIso)
+          .bind(nextNum, name, email, password, status, isAdmin, googleVerified, token, nowIso, nowIso, nowIso)
           .run();
 
         return jsonResponse({
@@ -356,6 +387,70 @@ export default {
           member_number: nextNum,
           status,
           is_admin: isAdmin,
+          is_paid: 0,
+        });
+      }
+
+      // 2b. POST /api/auto-enroll (Google Drive-Verified Enrollment from Quiz Apps Script)
+      if (path === '/api/auto-enroll' && request.method === 'POST') {
+        const body = await request.json().catch(() => ({}));
+        const expectedSecret = (env.AUTO_ENROLL_SECRET || AUTO_ENROLL_SECRET).trim();
+        const providedSecret = String(body.secret || '').trim();
+
+        if (!providedSecret || providedSecret !== expectedSecret) {
+          return jsonResponse({ error: 'Unauthorized enrollment secret.' }, 401);
+        }
+
+        const name = String(body.name || '').replace(/\s+/g, ' ').trim();
+        const email = String(body.email || '').trim().toLowerCase();
+        const googleVerified = body.google_verified ? 1 : 0;
+
+        if (!name || !email) {
+          return jsonResponse({ error: 'Name and email address are required.' }, 400);
+        }
+
+        const existing = await db.prepare('SELECT * FROM users WHERE lower(email) = ?').bind(email).first();
+        const nowIso = new Date().toISOString();
+
+        if (existing) {
+          await db
+            .prepare("UPDATE users SET name = ?, status = 'Approved', google_verified = MAX(google_verified, ?) WHERE id = ?")
+            .bind(name || existing.name, googleVerified, existing.id)
+            .run();
+
+          ctx.waitUntil(triggerAmsMemberSync(db, tenant));
+
+          return jsonResponse({
+            ok: true,
+            created: false,
+            member_number: existing.member_number || String(existing.id),
+            email,
+            status: 'Approved',
+            is_paid: Number(existing.is_paid) === 1 ? 1 : 0,
+          });
+        }
+
+        const countRow = await db.prepare('SELECT COUNT(*) as cnt FROM users').first();
+        const nextNum = String((countRow?.cnt || 0) + 1);
+        const token = generateToken();
+
+        await db
+          .prepare(
+            `INSERT INTO users (member_number, name, email, password, status, is_admin, is_paid, google_verified, auth_token, session_count, click_count, last_active_at, created_at, last_seen)
+             VALUES (?, ?, ?, ?, 'Approved', 0, 0, ?, ?, 0, 0, ?, ?, ?)`
+          )
+          .bind(nextNum, name, email, email, googleVerified, token, nowIso, nowIso, nowIso)
+          .run();
+
+        ctx.waitUntil(triggerAmsMemberSync(db, tenant));
+
+        return jsonResponse({
+          ok: true,
+          created: true,
+          member_number: nextNum,
+          email,
+          temp_password: email,
+          status: 'Approved',
           is_paid: 0,
         });
       }
@@ -390,6 +485,7 @@ export default {
           status: user.status || 'Approved',
           is_admin: isAdminFlag,
           is_paid: Number(user.is_paid) === 1 ? 1 : 0,
+          google_verified: Number(user.google_verified) === 1 || /@(gmail|googlemail)\.com$/i.test(user.email) ? 1 : 0,
         });
       }
 
@@ -443,13 +539,28 @@ export default {
 
         const newName = (body.newName || '').trim() || user.name;
         const newPassword = (body.newPassword || '').trim() || storedPw;
+        const requestedEmail = (body.newEmail || '').trim().toLowerCase();
+        const finalEmail = requestedEmail || user.email;
+
+        if (requestedEmail && requestedEmail !== user.email.toLowerCase()) {
+          const dup = await db.prepare('SELECT id FROM users WHERE lower(email) = ? AND id != ?').bind(requestedEmail, user.id).first();
+          if (dup) {
+            return jsonResponse({ error: 'That email address is already linked to another account.' }, 409);
+          }
+        }
+
+        const isGmail = /@(gmail|googlemail)\.com$/i.test(finalEmail) ? 1 : 0;
 
         await db
-          .prepare('UPDATE users SET name = ?, password = ? WHERE id = ?')
-          .bind(newName, newPassword, user.id)
+          .prepare('UPDATE users SET name = ?, email = ?, password = ?, google_verified = MAX(google_verified, ?) WHERE id = ?')
+          .bind(newName, finalEmail, newPassword, isGmail, user.id)
           .run();
 
-        return jsonResponse({ success: true, name: newName });
+        return jsonResponse({
+          success: true,
+          name: newName,
+          email: finalEmail,
+        });
       }
 
       // 6. POST /api/forgot-password
@@ -887,6 +998,16 @@ export default {
 
       if (path === '/api/admin/user-paid' && request.method === 'POST') {
         const body = await request.json();
+        if (body.is_paid) {
+          const targetUser = await db.prepare('SELECT email, google_verified FROM users WHERE id = ?').bind(body.userId).first();
+          const hasGoogle = targetUser && (Number(targetUser.google_verified) === 1 || /@(gmail|googlemail)\.com$/i.test(targetUser.email));
+          if (!hasGoogle) {
+            return jsonResponse(
+              { error: 'A Google/Gmail address is required before upgrading a member to Paid status.' },
+              400
+            );
+          }
+        }
         await db.prepare('UPDATE users SET is_paid = ? WHERE id = ?').bind(body.is_paid ? 1 : 0, body.userId).run();
         return jsonResponse({ ok: true });
       }
