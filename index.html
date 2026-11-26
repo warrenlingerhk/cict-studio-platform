@@ -574,6 +574,7 @@ let CMS_LESSONS_URL = '';
 let CMS_ITEMS = [];
 let LESSONS = [];
 let CURRENT_LESSON = null;
+let CURRENT_BLOCK_ITEMS = {};
 let SAVED_ANSWERS_MAP = {};
 
 // Calendar State
@@ -1229,7 +1230,7 @@ function formatNiceTime(timeStr) {
 }
 
 // ============================================================================
-// CMS PARSER (11-Column Schema)
+// CMS PARSER (11-Column Schema + Stable Item Codes like '118')
 // ============================================================================
 
 async function renderLessons() {
@@ -1275,11 +1276,18 @@ async function renderLessons() {
       const activeVal = String(r[iActive] || '').trim().toLowerCase();
       if (!lessonId || activeVal !== 'yes') continue;
 
+      const modId = String(r[iModule] || '1').trim() || '1';
+      const itemRaw = String(r[iItem] || '').trim() || String(rIdx);
+      const cleanLesson = lessonId.replace(/^L/i, '');
+      const cleanMod = modId.replace(/^M/i, '');
+      const itemCode = `${cleanLesson}${cleanMod}${itemRaw}`;
+
       CMS_ITEMS.push({
         rowOrder: rIdx,
         lesson: lessonId,
-        module: String(r[iModule] || '1').trim() || '1',
-        itemNum: parseFloat(String(r[iItem] || '').trim()) || rIdx,
+        module: modId,
+        itemNum: parseFloat(itemRaw) || rIdx,
+        itemCode: itemCode,
         name: String(r[iName] || '').trim(),
         paid: String(r[iPaid] || '').trim().toLowerCase() === 'paid',
         type: String(r[iType] || 'text').trim().toLowerCase(),
@@ -1329,6 +1337,9 @@ async function loadUserSavedAnswers() {
     const data = await res.json();
     SAVED_ANSWERS_MAP = {};
     for (const row of data.answers || []) {
+      if (row.item_code) {
+        SAVED_ANSWERS_MAP['code||' + row.item_code] = row.answer;
+      }
       const key = `${row.lesson_tab}||${row.module}||${row.question}`;
       SAVED_ANSWERS_MAP[key] = row.answer;
     }
@@ -1353,6 +1364,7 @@ async function openLesson(idx) {
   }
 
   CURRENT_LESSON = lesson;
+  CURRENT_BLOCK_ITEMS = {};
   hideViews();
   document.getElementById('view-lesson').classList.remove('hidden');
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1403,6 +1415,8 @@ async function openLesson(idx) {
 
 function renderCmsBlock(item, mIdx, bIdx) {
   const uid = `${mIdx}-${bIdx}`;
+  CURRENT_BLOCK_ITEMS[uid] = item;
+
   const isLocked = item.paid && !userHasPaidAccess();
   const paidBadge = item.paid ? `<span class="paid-pill">Paid</span>` : '';
   const headingHtml = item.title
@@ -1450,11 +1464,13 @@ function renderCmsBlock(item, mIdx, bIdx) {
   }
 
   if (item.type === 'answer') {
-    const lessonTab = CURRENT_LESSON ? ('L' + CURRENT_LESSON.id) : 'Answers';
+    const lessonTab = CURRENT_LESSON ? ('L' + String(CURRENT_LESSON.id).replace(/^L/i, '')) : 'Answers';
     const modObj = CMS_ITEMS.find(x => x.lesson === CURRENT_LESSON?.id && x.module === item.module);
     const modTitle = `Module ${item.module}: ${modObj?.name || ('Module ' + item.module)}`;
     const qText = item.content || item.title;
-    const savedVal = SAVED_ANSWERS_MAP[`${lessonTab}||${modTitle}||${qText}`] || '';
+    const savedVal = SAVED_ANSWERS_MAP['code||' + item.itemCode]
+      || SAVED_ANSWERS_MAP[`${lessonTab}||${modTitle}||${qText}`]
+      || '';
 
     return `
       <div class="cms-block">
@@ -1479,11 +1495,13 @@ function renderCmsBlock(item, mIdx, bIdx) {
     const isMulti = item.extra2.toLowerCase() === 'multi';
     const inputType = isMulti ? 'checkbox' : 'radio';
 
-    const lessonTab = CURRENT_LESSON ? ('L' + CURRENT_LESSON.id) : 'Answers';
+    const lessonTab = CURRENT_LESSON ? ('L' + String(CURRENT_LESSON.id).replace(/^L/i, '')) : 'Answers';
     const modObj = CMS_ITEMS.find(x => x.lesson === CURRENT_LESSON?.id && x.module === item.module);
     const modTitle = `Module ${item.module}: ${modObj?.name || ('Module ' + item.module)}`;
     const qText = '[Poll] ' + (item.title || item.content || 'Poll');
-    const savedPollStr = SAVED_ANSWERS_MAP[`${lessonTab}||${modTitle}||${qText}`] || '';
+    const savedPollStr = SAVED_ANSWERS_MAP['code||' + item.itemCode]
+      || SAVED_ANSWERS_MAP[`${lessonTab}||${modTitle}||${qText}`]
+      || '';
     const savedChoices = savedPollStr ? savedPollStr.split(',').map(s => s.trim()) : [];
 
     return `
@@ -1550,6 +1568,7 @@ function toggleModule(mIdx) {
 
 async function submitLessonAnswer(mIdx, bIdx) {
   const uid = `${mIdx}-${bIdx}`;
+  const item = CURRENT_BLOCK_ITEMS[uid] || {};
   const input = document.getElementById('ans-in-' + uid);
   const statusEl = document.getElementById('ans-st-' + uid);
   const btn = document.getElementById('ans-btn-' + uid);
@@ -1569,8 +1588,11 @@ async function submitLessonAnswer(mIdx, bIdx) {
 
   const modTitle = modCard ? modCard.querySelector('.mod-title').innerText : '';
   const questionText = qEl ? qEl.innerText : '';
-  const lessonTab = CURRENT_LESSON ? ('L' + CURRENT_LESSON.id) : 'Answers';
+  const lessonTab = CURRENT_LESSON ? ('L' + String(CURRENT_LESSON.id).replace(/^L/i, '')) : 'Answers';
   const lessonTitle = CURRENT_LESSON ? CURRENT_LESSON.name : '';
+  const itemCode = item.itemCode || '';
+  const itemTitle = item.title || questionText;
+  const isPaidItem = Boolean(item.paid);
 
   try {
     const res = await fetch('/api/answers', {
@@ -1583,12 +1605,16 @@ async function submitLessonAnswer(mIdx, bIdx) {
         lesson_tab: lessonTab,
         module: modTitle,
         lesson: lessonTitle,
+        item_code: itemCode,
+        title: itemTitle,
+        is_paid_item: isPaidItem,
         question: questionText,
         answer: answerText
       })
     });
     const data = await res.json();
     if (res.ok && data.ok) {
+      if (itemCode) SAVED_ANSWERS_MAP['code||' + itemCode] = answerText;
       statusEl.style.color = 'var(--green)';
       statusEl.innerText = 'Saved to your workbook!';
     } else {
@@ -1606,6 +1632,7 @@ async function submitLessonAnswer(mIdx, bIdx) {
 
 async function submitPollVote(mIdx, bIdx) {
   const uid = `${mIdx}-${bIdx}`;
+  const item = CURRENT_BLOCK_ITEMS[uid] || {};
   const statusEl = document.getElementById('poll-st-' + uid);
   const btn = document.getElementById('poll-btn-' + uid);
   const qEl = document.getElementById('poll-q-' + uid);
@@ -1624,8 +1651,12 @@ async function submitPollVote(mIdx, bIdx) {
 
   const modTitle = modCard ? modCard.querySelector('.mod-title').innerText : '';
   const questionText = '[Poll] ' + (qEl ? qEl.innerText : '');
-  const lessonTab = CURRENT_LESSON ? ('L' + CURRENT_LESSON.id) : 'Answers';
+  const lessonTab = CURRENT_LESSON ? ('L' + String(CURRENT_LESSON.id).replace(/^L/i, '')) : 'Answers';
   const lessonTitle = CURRENT_LESSON ? CURRENT_LESSON.name : '';
+  const itemCode = item.itemCode || '';
+  const itemTitle = item.title ? ('[Poll] ' + item.title) : questionText;
+  const isPaidItem = Boolean(item.paid);
+  const answerText = checked.join(', ');
 
   try {
     const res = await fetch('/api/answers', {
@@ -1638,12 +1669,16 @@ async function submitPollVote(mIdx, bIdx) {
         lesson_tab: lessonTab,
         module: modTitle,
         lesson: lessonTitle,
+        item_code: itemCode,
+        title: itemTitle,
+        is_paid_item: isPaidItem,
         question: questionText,
-        answer: checked.join(', ')
+        answer: answerText
       })
     });
     const data = await res.json();
     if (res.ok && data.ok) {
+      if (itemCode) SAVED_ANSWERS_MAP['code||' + itemCode] = answerText;
       statusEl.style.color = 'var(--green)';
       statusEl.innerText = 'Vote recorded!';
     } else {
