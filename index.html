@@ -407,7 +407,7 @@
 <!-- Interactive Lesson Viewer & Module Accordion -->
 <div id="view-lesson" class="hidden">
   <div class="wrap lesson-wrap">
-   <button class="btn" onclick="closeLesson()" style="position: relative; z-index: 45;">← Back to Home</button>
+    <button type="button" class="btn ghost small" onclick="showHome()" style="position: relative; z-index: 45;">&larr; Back to Home</button>
     <div class="lesson-banner">
       <div class="lesson-kicker" id="lesson-view-kicker">Lesson</div>
       <h1 id="lesson-view-title">Loading Lesson...</h1>
@@ -574,6 +574,7 @@ let CMS_LESSONS_URL = '';
 let CMS_ITEMS = [];
 let LESSONS = [];
 let CURRENT_LESSON = null;
+let SAVED_ANSWERS_MAP = {};
 
 // Calendar State
 let ALL_EVENTS = [];
@@ -693,6 +694,7 @@ function hideViews() {
 }
 
 function showHome() {
+  CURRENT_LESSON = null;
   hideViews();
   document.getElementById('view-home').classList.remove('hidden');
   renderHeader();
@@ -862,7 +864,7 @@ function renderCalendar() {
   listContainer.classList.add('hidden');
 
   const firstDay = new Date(CAL_YEAR, CAL_MONTH, 1).getDay();
-  const startOffset = (firstDay + 6) % 7; // Monday = 0
+  const startOffset = (firstDay + 6) % 7;
   const daysInMonth = new Date(CAL_YEAR, CAL_MONTH + 1, 0).getDate();
   const prevMonthDays = new Date(CAL_YEAR, CAL_MONTH, 0).getDate();
   const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
@@ -1316,7 +1318,24 @@ async function renderLessons() {
   }
 }
 
-function openLesson(idx) {
+async function loadUserSavedAnswers() {
+  const token = localStorage.getItem('token');
+  if (!token) return;
+  try {
+    const res = await fetch('/api/my-answers', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    SAVED_ANSWERS_MAP = {};
+    for (const row of data.answers || []) {
+      const key = `${row.lesson_tab}||${row.module}||${row.question}`;
+      SAVED_ANSWERS_MAP[key] = row.answer;
+    }
+  } catch (e) {}
+}
+
+async function openLesson(idx) {
   const lesson = LESSONS[idx];
   if (!lesson) return;
 
@@ -1340,6 +1359,8 @@ function openLesson(idx) {
 
   document.getElementById('lesson-view-kicker').innerText = 'Lesson ' + lesson.id;
   document.getElementById('lesson-view-title').innerText = lesson.name;
+
+  await loadUserSavedAnswers();
 
   const items = CMS_ITEMS.filter(it => it.lesson === lesson.id);
   const modMap = new Map();
@@ -1429,6 +1450,12 @@ function renderCmsBlock(item, mIdx, bIdx) {
   }
 
   if (item.type === 'answer') {
+    const lessonTab = CURRENT_LESSON ? ('L' + CURRENT_LESSON.id) : 'Answers';
+    const modObj = CMS_ITEMS.find(x => x.lesson === CURRENT_LESSON?.id && x.module === item.module);
+    const modTitle = `Module ${item.module}: ${modObj?.name || ('Module ' + item.module)}`;
+    const qText = item.content || item.title;
+    const savedVal = SAVED_ANSWERS_MAP[`${lessonTab}||${modTitle}||${qText}`] || '';
+
     return `
       <div class="cms-block">
         <div class="interactive-card">
@@ -1437,10 +1464,10 @@ function renderCmsBlock(item, mIdx, bIdx) {
           ${isLocked ? `
             <div class="locked-notice">Paid Members Only — Upgrade your membership to submit answers and receive feedback.</div>
           ` : `
-            <textarea class="answer-input" id="ans-in-${uid}" placeholder="${escapeHtml(item.extra1 || 'Write your answer here...')}"></textarea>
+            <textarea class="answer-input" id="ans-in-${uid}" placeholder="${escapeHtml(item.extra1 || 'Write your answer here...')}">${escapeHtml(savedVal)}</textarea>
             <div class="action-row">
               <button class="btn cta small" id="ans-btn-${uid}" onclick="submitLessonAnswer(${mIdx}, ${bIdx})">Submit Answer</button>
-              <span class="action-status" id="ans-st-${uid}"></span>
+              <span class="action-status" id="ans-st-${uid}" style="color: var(--green);">${savedVal ? 'Saved to your workbook!' : ''}</span>
             </div>
           `}
         </div>
@@ -1451,6 +1478,14 @@ function renderCmsBlock(item, mIdx, bIdx) {
     const opts = item.extra1.split('|').map(s => s.trim()).filter(Boolean);
     const isMulti = item.extra2.toLowerCase() === 'multi';
     const inputType = isMulti ? 'checkbox' : 'radio';
+
+    const lessonTab = CURRENT_LESSON ? ('L' + CURRENT_LESSON.id) : 'Answers';
+    const modObj = CMS_ITEMS.find(x => x.lesson === CURRENT_LESSON?.id && x.module === item.module);
+    const modTitle = `Module ${item.module}: ${modObj?.name || ('Module ' + item.module)}`;
+    const qText = '[Poll] ' + (item.title || item.content || 'Poll');
+    const savedPollStr = SAVED_ANSWERS_MAP[`${lessonTab}||${modTitle}||${qText}`] || '';
+    const savedChoices = savedPollStr ? savedPollStr.split(',').map(s => s.trim()) : [];
+
     return `
       <div class="cms-block">
         <div class="interactive-card">
@@ -1463,14 +1498,14 @@ function renderCmsBlock(item, mIdx, bIdx) {
             <div class="poll-opts" id="poll-opts-${uid}">
               ${opts.map(opt => `
                 <label class="poll-opt">
-                  <input type="${inputType}" name="poll-${uid}" value="${escapeHtml(opt)}">
+                  <input type="${inputType}" name="poll-${uid}" value="${escapeHtml(opt)}" ${savedChoices.includes(opt) ? 'checked' : ''}>
                   <span>${escapeHtml(opt)}</span>
                 </label>
               `).join('')}
             </div>
             <div class="action-row">
               <button class="btn cta small" id="poll-btn-${uid}" onclick="submitPollVote(${mIdx}, ${bIdx})">Submit Vote</button>
-              <span class="action-status" id="poll-st-${uid}"></span>
+              <span class="action-status" id="poll-st-${uid}" style="color: var(--green);">${savedChoices.length ? 'Vote recorded!' : ''}</span>
             </div>
           `}
         </div>
