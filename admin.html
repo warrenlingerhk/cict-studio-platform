@@ -3,501 +3,915 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title id="admin-tab-title">Site Administration</title>
-<link rel="shortcut icon" id="admin-tab-favicon" href="">
-<style>
-  :root {
-    --primary: #0B2545;
-    --accent: #D4AF37;
-    --bg: #F8F9FA;
-    --card: #FFFFFF;
-    --muted: #5B6B7F;
-    --red: #C62828;
-    --amber: #B7791F;
-    --green: #1B7F3B;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif; }
-  body { background: var(--bg); color: var(--primary); padding: 24px; }
-  header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid var(--accent); padding-bottom: 14px; margin-bottom: 22px; }
-  header h1 { font-size: 1.5rem; }
-  header h1 span { color: var(--accent); }
-  .pill { background: #fff; color: var(--primary); border: 2px solid var(--primary); border-radius: 999px; padding: 8px 18px; font-weight: 700; text-decoration: none; cursor: pointer; display: inline-flex; align-items: center; }
-  .pill:hover { background: #f0f4f8; }
-  h2 { margin: 26px 0 10px; font-size: 1.15rem; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin: 12px 0 8px; }
-  .card { background: var(--card); border-radius: 10px; padding: 16px; box-shadow: 0 2px 6px rgba(0, 20, 60, .08); }
-  .card b { font-size: 1.6rem; display: block; margin-bottom: 4px; color: var(--primary); }
-  .card span { color: var(--muted); font-size: .85rem; font-weight: 600; }
-  .row { background: var(--card); border-radius: 10px; padding: 8px 12px; margin-bottom: 8px; box-shadow: 0 2px 6px rgba(0, 20, 60, .08); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
-  .muted { color: var(--muted); font-size: .88rem; }
-  button { cursor: pointer; border: none; border-radius: 8px; padding: 8px 14px; font-weight: 700; font-size: .85rem; }
-  button[disabled] { opacity: 0.7; cursor: default; }
-  .btn-accent { background: var(--accent); color: #fff; }
-  .btn-primary { background: var(--primary); color: #fff; }
-  .btn-green { background: var(--green); color: #fff; }
-  .btn-amber { background: var(--amber); color: #fff; }
-  .btn-ghost { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
-  .btn-red { background: var(--red); color: #fff; }
-  .btn-mini { padding: 5px 10px; font-size: .72rem; line-height: 1.2; border-radius: 8px; min-width: 64px; text-align: center; }
-  .badge { border-radius: 6px; padding: 2px 8px; font-size: .7rem; font-weight: 700; margin-left: 6px; color: #fff; background: var(--primary); }
-  .badge.a { background: var(--accent); }
-  .badge.r { background: var(--red); }
-  .badge.p { background: var(--amber); }
-  .badge.g { background: var(--green); }
-  .chip { background: #eef2f7; border-radius: 8px; padding: 3px 9px; font-size: .72rem; font-weight: 800; color: var(--primary); display: inline-block; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-  .dot.on { background: var(--green); box-shadow: 0 0 6px rgba(27, 127, 59, .7); }
-  .dot.off { background: #d3dce6; }
-  label.chk { display: flex; gap: 6px; align-items: center; font-size: .82rem; color: var(--muted); font-weight: 600; cursor: pointer; }
-  #login { max-width: 400px; margin: 10vh auto; background: #fff; border-radius: 14px; box-shadow: 0 8px 24px rgba(0, 20, 60, .12); overflow: hidden; }
-  .auth-band { background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); color: #fff; font-weight: 800; font-size: 1.2rem; padding: 16px 20px; }
-  .auth-body { padding: 22px; }
-  input, textarea { width: 100%; padding: 11px; margin: 6px 0 14px; border: 2px solid #dfe6ee; border-radius: 8px; font-size: .95rem; font-family: inherit; }
-  input:focus, textarea:focus { outline: none; border-color: var(--accent); }
-  .hidden { display: none !important; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <link id="dynamic-favicon" rel="icon" href="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0B2545;
+      --accent: #D4AF37;
+      --bg: #F8F9FA;
+      --card: #FFFFFF;
+      --text: #1E293B;
+      --muted: #64748B;
+      --border: #E2E8F0;
+      --green: #16A34A;
+      --red: #DC2626;
+      --amber: #D97706;
+    }
 
-  /* Expandable Site Setup Accordion */
-  .accordion { background: var(--card); border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 20, 60, .08); margin: 16px 0 22px; border-left: 5px solid var(--accent); overflow: hidden; }
-  .acc-head { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; background: #fff; }
-  .acc-head:hover { background: #fafbfd; }
-  .acc-title { font-size: 1.08rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 10px; }
-  .acc-chevron { font-size: .9rem; transition: transform 0.2s ease; color: var(--accent); font-weight: 900; }
-  .accordion.open .acc-chevron { transform: rotate(180deg); }
-  .acc-body { display: none; padding: 18px 22px 22px; border-top: 1px solid #eef2f7; background: #fcfdfe; }
-  .accordion.open .acc-body { display: block; }
-  .setup-desc { color: var(--muted); font-size: .9rem; margin-bottom: 18px; }
-  .q-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px 20px; }
-  .q-item label { display: block; font-weight: 700; font-size: .9rem; color: var(--primary); margin-bottom: 3px; }
-  .q-item .q-help { display: block; font-size: .78rem; color: var(--muted); margin-bottom: 6px; line-height: 1.35; }
-  .q-item input { margin: 0; padding: 9px 11px; font-size: .9rem; background: #fff; }
-  .color-wrap { display: flex; gap: 8px; align-items: center; }
-  .color-wrap input[type="color"] { width: 42px; height: 38px; padding: 2px; border-radius: 8px; cursor: pointer; flex-shrink: 0; }
-  .acc-footer { margin-top: 20px; padding-top: 14px; border-top: 1px solid #eef2f7; display: flex; align-items: center; gap: 14px; }
-</style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    h1, h2, h3, .brand-title { font-family: 'Poppins', sans-serif; }
+
+    /* HEADER */
+    .topbar {
+      background: #FFFFFF;
+      border-bottom: 2px solid var(--primary);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    .topbar-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .brand-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--primary);
+    }
+    .brand-logo {
+      height: 38px;
+      width: auto;
+      max-width: 160px;
+      object-fit: contain;
+      border-radius: 6px;
+    }
+    .brand-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+      padding: 9px 18px;
+      border-radius: 999px;
+      border: 2px solid var(--primary);
+      background: #FFFFFF;
+      color: var(--primary);
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.18s ease;
+    }
+    .btn:hover {
+      background: var(--primary);
+      color: #FFFFFF;
+      transform: translateY(-1px);
+    }
+    .btn.primary {
+      background: var(--primary);
+      color: #FFFFFF;
+    }
+    .btn.primary:hover {
+      opacity: 0.92;
+    }
+    .btn.accent {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #FFFFFF;
+    }
+    .btn.small {
+      padding: 6px 13px;
+      font-size: 0.8rem;
+    }
+    .btn.danger {
+      border-color: var(--red);
+      color: var(--red);
+    }
+    .btn.danger:hover {
+      background: var(--red);
+      color: #FFFFFF;
+    }
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* CONTAINER */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 24px 64px;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .page-header h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    /* COLLAPSIBLE CARD (SITE SETUP) */
+    .setup-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--accent);
+      border-radius: 16px;
+      margin-bottom: 28px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+      overflow: hidden;
+    }
+    .setup-header {
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+      background: #FFFFFF;
+    }
+    .setup-header:hover {
+      background: #F8FAFC;
+    }
+    .setup-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .setup-title-wrap h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    .setup-badge {
+      background: var(--accent);
+      color: #FFFFFF;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .chevron {
+      color: var(--accent);
+      font-size: 0.9rem;
+      transition: transform 0.2s ease;
+    }
+    .setup-card.collapsed .chevron {
+      transform: rotate(180deg);
+    }
+    .setup-body {
+      padding: 6px 24px 24px;
+      border-top: 1px solid var(--border);
+    }
+    .setup-card.collapsed .setup-body {
+      display: none;
+    }
+    .setup-intro {
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin: 14px 0 20px;
+    }
+    .setup-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 18px;
+      margin-bottom: 22px;
+    }
+    .setup-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .setup-field label {
+      font-weight: 700;
+      font-size: 0.88rem;
+      color: var(--primary);
+    }
+    .setup-field .hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.35;
+      min-height: 32px;
+    }
+    .setup-field input[type="text"],
+    .setup-field input[type="email"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      color: var(--text);
+      background: #FFFFFF;
+      transition: border-color 0.15s ease;
+    }
+    .setup-field input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .color-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .color-row input[type="color"] {
+      width: 42px;
+      height: 40px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 2px;
+      background: #FFFFFF;
+      cursor: pointer;
+    }
+    .setup-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .status-msg {
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+
+    /* METRICS GRID */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .metric-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 22px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    }
+    .metric-val {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.9rem;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+    .metric-lbl {
+      font-size: 0.84rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    /* TOOLBAR */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .filter-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .filter-pill {
+      padding: 7px 14px;
+      border-radius: 999px;
+      border: 1.5px solid var(--border);
+      background: #FFFFFF;
+      color: var(--text);
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .filter-pill.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #FFFFFF;
+    }
+
+    /* MEMBERS LIST */
+    .members-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .member-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    }
+    .member-main {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .member-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .member-num {
+      font-weight: 800;
+      font-size: 0.85rem;
+      color: var(--primary);
+      background: #F1F5F9;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    .member-name {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text);
+    }
+    .badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .badge.approved { background: #DCFCE7; color: #166534; }
+    .badge.pending { background: #FEF3C7; color: #92400E; }
+    .badge.rejected { background: #FEE2E2; color: #991B1B; }
+    .badge.paid { background: #FEF9C3; color: #854D0E; border: 1px solid #FDE047; }
+    .badge.free { background: #F1F5F9; color: #475569; }
+    .badge.admin { background: var(--primary); color: #FFFFFF; }
+
+    .member-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .stat-chip {
+      background: #F8FAFC;
+      border: 1px solid var(--border);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .member-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      background: var(--card);
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+    }
+  </style>
 </head>
 <body>
 
-<div id="login" class="hidden">
-  <div class="auth-band" id="login-band">Platform <span>Admin</span></div>
-  <div class="auth-body">
-    <p id="li-err" class="muted" style="margin-bottom:14px; color:var(--red); font-weight:700;"></p>
-    <input id="li-email" type="email" placeholder="Admin Email">
-    <input id="li-pass" type="password" placeholder="Password">
-    <button class="btn-primary" style="width:100%; padding:11px; margin-bottom:10px;" onclick="quickAdminLogin()">Verify &amp; Open Dashboard</button>
-    <a class="pill" href="/" style="width:100%; justify-content:center;">&#8592; Go to Main Site</a>
-  </div>
-</div>
-
-<div id="dash" class="hidden">
-  <header>
-    <h1><span id="admin-site-name">Platform</span> <span>Administration</span></h1>
-    <a class="pill" href="/">&#8592; Back to site</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a href="/" class="brand-link">
+        <img id="hdr-logo" class="brand-logo" src="" alt="" style="display:none;">
+        <span id="hdr-title" class="brand-title">Admin Dashboard</span>
+      </a>
+      <div class="nav-actions">
+        <a href="/" class="btn">← Back to site</a>
+      </div>
+    </div>
   </header>
-  <h2 style="margin-top:0; font-size:1.6rem;">Admin Dashboard</h2>
 
-  <!-- Collapsible Onboarding & Site Setup Dropdown -->
-  <div class="accordion" id="setup-accordion">
-    <div class="acc-head" onclick="toggleSetupAccordion()">
-      <div class="acc-title">
-        <span id="setup-module-title">Onboarding &amp; Academy Foundations</span>
-        <span class="badge a">Site Setup</span>
-      </div>
-      <span class="acc-chevron">&#9660;</span>
+  <main class="container">
+    <div class="page-header">
+      <h1>Admin Dashboard</h1>
     </div>
-    <div class="acc-body">
-      <p class="setup-desc" id="setup-topic-desc">Complete these onboarding items to automatically set up your custom academy portal.</p>
-      <div class="q-grid" id="setup-questions"></div>
-      <div class="acc-footer">
-        <button id="save-setup-btn" class="btn-primary" style="padding:10px 22px;" onclick="saveSiteSettings()">Save &amp; Publish Settings</button>
-        <span id="setup-save-msg" class="muted" style="font-weight:700;"></span>
+
+    <!-- COLLAPSIBLE SITE SETUP CARD -->
+    <section class="setup-card" id="setup-card">
+      <div class="setup-header" onclick="toggleSetupCard()">
+        <div class="setup-title-wrap">
+          <h2>Onboarding & Academy Foundations</h2>
+          <span class="setup-badge">Site Setup</span>
+        </div>
+        <span class="chevron">▲</span>
       </div>
+
+      <div class="setup-body">
+        <p class="setup-intro">Complete these onboarding items to automatically set up your custom academy portal.</p>
+
+        <div class="setup-grid">
+          <div class="setup-field">
+            <label for="set-site-name">Academy Site Name</label>
+            <div class="hint">Enter the official public brand name of your coaching academy or course.</div>
+            <input type="text" id="set-site-name" placeholder="e.g. CICT LegacyCP Studio">
+          </div>
+          <div class="setup-field">
+            <label for="set-tagline">Hero Eyebrow / Tagline</label>
+            <div class="hint">Short uppercase label displayed right above your main hero headline.</div>
+            <input type="text" id="set-tagline" placeholder="e.g. HIGH-TICKET COURSE ENGINE">
+          </div>
+          <div class="setup-field">
+            <label for="set-hero-title">Hero Title Headline</label>
+            <div class="hint">Write the main bold headline displayed at the top of your course home page.</div>
+            <input type="text" id="set-hero-title" placeholder="e.g. Your Legacy, Scaled by Design.">
+          </div>
+          <div class="setup-field">
+            <label for="set-hero-points">Hero Sub-Points</label>
+            <div class="hint">List up to three bullet points highlighting key client outcomes (separated by a pipe | symbol).</div>
+            <input type="text" id="set-hero-points" placeholder="e.g. Scale your legacy.|Share your success.|Spread your word.">
+          </div>
+          <div class="setup-field">
+            <label for="set-logo-url">Header Logo URL</label>
+            <div class="hint">Provide the direct public link to your square or horizontal logo image.</div>
+            <input type="text" id="set-logo-url" placeholder="https://...">
+          </div>
+          <div class="setup-field">
+            <label for="set-favicon-url">Tab Favicon URL</label>
+            <div class="hint">Provide the direct public link to your browser tab icon image.</div>
+            <input type="text" id="set-favicon-url" placeholder="https://...">
+          </div>
+          <div class="setup-field">
+            <label for="set-primary-color">Brand Primary Color</label>
+            <div class="hint">Enter your main brand hex color code for major buttons and headings.</div>
+            <div class="color-row">
+              <input type="color" id="pick-primary-color" value="#0B2545" oninput="document.getElementById('set-primary-color').value = this.value">
+              <input type="text" id="set-primary-color" value="#0B2545" oninput="syncColorPicker('pick-primary-color', this.value)">
+            </div>
+          </div>
+          <div class="setup-field">
+            <label for="set-accent-color">Brand Accent Color</label>
+            <div class="hint">Enter your secondary highlight hex color code for badges and accents.</div>
+            <div class="color-row">
+              <input type="color" id="pick-accent-color" value="#D4AF37" oninput="document.getElementById('set-accent-color').value = this.value">
+              <input type="text" id="set-accent-color" value="#D4AF37" oninput="syncColorPicker('pick-accent-color', this.value)">
+            </div>
+          </div>
+          <div class="setup-field">
+            <label for="set-bg-color">Brand Background Color</label>
+            <div class="hint">Enter your page background hex color code.</div>
+            <div class="color-row">
+              <input type="color" id="pick-bg-color" value="#FFFFFF" oninput="document.getElementById('set-bg-color').value = this.value">
+              <input type="text" id="set-bg-color" value="#FFFFFF" oninput="syncColorPicker('pick-bg-color', this.value)">
+            </div>
+          </div>
+          <div class="setup-field">
+            <label for="set-support-email">Support Contact Email</label>
+            <div class="hint">Enter the official support email address for class member inquiries.</div>
+            <input type="email" id="set-support-email" placeholder="support@yourdomain.com">
+          </div>
+        </div>
+
+        <div class="setup-actions">
+          <button class="btn primary" id="save-settings-btn" onclick="saveSettings()">Save & Publish Settings</button>
+          <span class="status-msg" id="settings-status"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- METRICS -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-val" id="m-total-users">0</div>
+        <div class="metric-lbl">Total Registered Users</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" id="m-total-clicks">0</div>
+        <div class="metric-lbl">Total Clicks</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" id="m-total-posts">0</div>
+        <div class="metric-lbl">Posts</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" id="m-active-5m">0</div>
+        <div class="metric-lbl">Active users (last 5 min)</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" id="m-paid-users">0</div>
+        <div class="metric-lbl">Paid Members</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" id="m-active-rate">0%</div>
+        <div class="metric-lbl">Active member rate</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" id="m-avg-sessions">0.0</div>
+        <div class="metric-lbl">Avg sessions / user</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" id="m-avg-clicks">0.0</div>
+        <div class="metric-lbl">Avg clicks / session</div>
+      </div>
+    </section>
+
+    <!-- MEMBER CONTROLS -->
+    <div class="toolbar">
+      <div class="filter-pills">
+        <button class="filter-pill active" onclick="setFilter('all', this)">All Members</button>
+        <button class="filter-pill" onclick="setFilter('Approved', this)">Approved</button>
+        <button class="filter-pill" onclick="setFilter('Pending', this)">Pending</button>
+        <button class="filter-pill" onclick="setFilter('paid', this)">Paid</button>
+      </div>
+      <button class="btn" id="sync-btn" onclick="syncMembersSheet()">Sync Members Sheet</button>
     </div>
-  </div>
 
-  <div class="cards" id="stats"></div>
-  <h2>Analytics</h2>
-  <div class="cards" id="analytics"></div>
-  <h2 style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-    Classmates — full member list
-    <button id="sync-members-btn" class="btn-ghost" style="font-size:.78rem; padding:6px 14px;" onclick="syncMembers()">Sync Members Sheet</button>
-  </h2>
-  <div id="members"></div>
-</div>
+    <div class="members-list" id="members-list">
+      <div class="empty-state">Loading members...</div>
+    </div>
+  </main>
 
-<script>
-const ADMIN_QUESTIONS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTexC6A2yzJEz3sH8UDKzmbb9Qu1rxsOowzT26Nkjwy_nBxFLogkzDF0M17FOlJaHAyI1Vp6hWeAYhb/pub?gid=1419818085&single=true&output=csv';
-let TOKEN = localStorage.getItem('token') || '';
-let SETUP_FIELDS = [];
-const $ = id => document.getElementById(id);
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  <script>
+    let ALL_USERS = [];
+    let CURRENT_FILTER = 'all';
 
-function toggleSetupAccordion() {
-  $('setup-accordion').classList.toggle('open');
-}
-
-function formatDriveUrl(url) {
-  if (!url) return '';
-  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
-  if (match && match[1]) return 'https://drive.google.com/thumbnail?id=' + match[1] + '&sz=w1000';
-  return url;
-}
-
-function parseCSV(text) {
-  const rows = [];
-  let row = [];
-  let token = '';
-  let insideQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    const next = text[i + 1];
-    if (c === '"') {
-      if (insideQuotes && next === '"') { token += '"'; i++; }
-      else { insideQuotes = !insideQuotes; }
-    } else if (c === ',' && !insideQuotes) {
-      row.push(token); token = '';
-    } else if ((c === '\r' || c === '\n') && !insideQuotes) {
-      if (c === '\r' && next === '\n') i++;
-      row.push(token); token = '';
-      if (row.length > 0 && row.some(cell => cell.trim())) rows.push(row);
-      row = [];
-    } else {
-      token += c;
+    function resolveDriveImage(url) {
+      if (!url) return '';
+      const trimmed = url.trim();
+      const match = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        return `https://lh3.googleusercontent.com/d/${match[1]}`;
+      }
+      return trimmed;
     }
-  }
-  if (token || row.length > 0) {
-    row.push(token);
-    if (row.some(cell => cell.trim())) rows.push(row);
-  }
-  return rows;
-}
 
-function mapTitleToKey(title) {
-  const t = String(title || '').trim().toLowerCase();
-  if (t.includes('site name')) return 'site_name';
-  if (t.includes('tagline')) return 'tagline';
-  if (t.includes('hero title')) return 'hero_title';
-  if (t.includes('sub-points') || t.includes('subpoints') || t.includes('bullet')) return 'hero_points';
-  if (t.includes('logo')) return 'logo_url';
-  if (t.includes('favicon')) return 'favicon_url';
-  if (t.includes('primary color')) return 'primary_color';
-  if (t.includes('accent color')) return 'accent_color';
-  if (t.includes('background color')) return 'bg_color';
-  if (t.includes('support') && t.includes('email')) return 'support_email';
-  if (t.includes('dream outcome')) return 'dream_outcome';
-  if (t.includes('avatar')) return 'target_avatar';
-  if (t.includes('method')) return 'signature_method';
-  if (t.includes('domain')) return 'custom_domain';
-  return t.replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
-}
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
 
-function setFavicon(url) {
-  if (!url) return;
-  document.querySelectorAll("link[rel*='icon']").forEach(el => el.remove());
-  const link = document.createElement('link');
-  link.id = 'admin-tab-favicon';
-  link.rel = 'shortcut icon';
-  link.type = 'image/png';
-  link.href = url;
-  document.head.appendChild(link);
-}
+    function toggleSetupCard() {
+      const card = document.getElementById('setup-card');
+      card.classList.toggle('collapsed');
+      localStorage.setItem('admin_setup_collapsed', card.classList.contains('collapsed') ? '1' : '0');
+    }
 
-function applyThemeValues(s) {
-  if (!s) return;
-  const siteName = s.site_name || 'Platform';
-  const favUrl   = s.favicon_url || '';
-  const primary  = s.primary_color || '#0B2545';
-  const accent   = s.accent_color || '#D4AF37';
-  const bg       = s.bg_color || '#F8F9FA';
-
-  $('admin-site-name').innerText = siteName;
-  $('admin-tab-title').innerText = siteName + ' — Site Administration';
-  $('login-band').innerHTML = esc(siteName) + ' <span>Admin</span>';
-
-  if (favUrl) setFavicon(formatDriveUrl(favUrl));
-
-  const r = document.documentElement;
-  r.style.setProperty('--primary', primary);
-  r.style.setProperty('--accent', accent);
-  r.style.setProperty('--bg', bg);
-}
-
-async function loadSetupQuestionsAndValues() {
-  try {
-    const [qRes, cfgData] = await Promise.all([
-      fetch(ADMIN_QUESTIONS_CSV_URL),
-      fetch('/api/config').then(r => r.ok ? r.json() : null)
-    ]);
-    const csv = await qRes.text();
-    const rows = parseCSV(csv);
-    const saved = (cfgData && cfgData.settings) ? cfgData.settings : {};
-    applyThemeValues(saved);
-
-    SETUP_FIELDS = [];
-    let html = '';
-
-    for (let i = 1; i < rows.length; i++) {
-      const r = rows[i];
-      const type = (r[1] || '').trim().toLowerCase();
-      const title = (r[2] || '').trim();
-      const content = (r[3] || '').trim();
-      const placeholder = (r[4] || '').trim();
-
-      if (type === 'module' && title) {
-        $('setup-module-title').textContent = title;
-      } else if (type === 'text' && content) {
-        $('setup-topic-desc').textContent = content;
- } else if (type === 'answer' && title) {
-        const key = mapTitleToKey(title);
-        if (key === 'custom_domain') continue;
-        const val = saved[key] || '';
-        const isColor = key.endsWith('_color');
-        SETUP_FIELDS.push({ key, title });
-
-        if (isColor) {
-          const hexVal = /^#[0-9A-Fa-f]{6}$/.test(val) ? val : '#0B2545';
-          html += `
-            <div class="q-item">
-              <label for="cfg-${esc(key)}">${esc(title)}</label>
-              <span class="q-help">${esc(content)}</span>
-              <div class="color-wrap">
-                <input type="color" id="pick-${esc(key)}" value="${esc(hexVal)}" oninput="$('cfg-${esc(key)}').value = this.value.toUpperCase()">
-                <input type="text" id="cfg-${esc(key)}" value="${esc(val)}" placeholder="${esc(placeholder)}" oninput="if(/^#[0-9A-Fa-f]{6}$/.test(this.value)) $('pick-${esc(key)}').value = this.value">
-              </div>
-            </div>`;
-        } else {
-          html += `
-            <div class="q-item">
-              <label for="cfg-${esc(key)}">${esc(title)}</label>
-              <span class="q-help">${esc(content)}</span>
-              <input type="text" id="cfg-${esc(key)}" value="${esc(val)}" placeholder="${esc(placeholder)}">
-            </div>`;
-        }
+    function syncColorPicker(pickerId, hex) {
+      if (/^#[0-9A-Fa-f]{6}$/.test(hex.trim())) {
+        document.getElementById(pickerId).value = hex.trim();
       }
     }
 
-    $('setup-questions').innerHTML = html || '<p class="muted">No setup questions found in sheet.</p>';
-  } catch (err) {
-    $('setup-questions').innerHTML = '<p class="muted">Could not load setup questions.</p>';
-  }
-}
+    function applyTheme(s) {
+      if (!s) return;
+      if (s.primary_color) document.documentElement.style.setProperty('--primary', s.primary_color);
+      if (s.accent_color) document.documentElement.style.setProperty('--accent', s.accent_color);
+      if (s.bg_color) document.documentElement.style.setProperty('--bg', s.bg_color);
 
-async function saveSiteSettings() {
-  const btn = $('save-setup-btn');
-  const msg = $('setup-save-msg');
-  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
-  if (msg) msg.textContent = '';
-
-  const payload = {};
-  SETUP_FIELDS.forEach(f => {
-    const el = $('cfg-' + f.key);
-    if (el) payload[f.key] = el.value.trim();
-  });
-
-  try {
-    const r = await api('/api/admin/settings', { method: 'POST', body: payload });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      if (msg) { msg.style.color = 'var(--red)'; msg.textContent = j.error || 'Failed to save settings.'; }
-    } else {
-      applyThemeValues(payload);
-      if (msg) { msg.style.color = 'var(--green)'; msg.textContent = 'Saved! Your site has been updated.'; }
+      if (s.site_name) {
+        document.title = s.site_name + ' — Admin Dashboard';
+        document.getElementById('hdr-title').textContent = s.site_name;
+      }
+      if (s.logo_url) {
+        const img = document.getElementById('hdr-logo');
+        img.src = resolveDriveImage(s.logo_url);
+        img.style.display = 'block';
+      }
+      if (s.favicon_url) {
+        document.getElementById('dynamic-favicon').href = resolveDriveImage(s.favicon_url);
+      }
     }
-  } catch (e) {
-    if (msg) { msg.style.color = 'var(--red)'; msg.textContent = 'Error: ' + e.message; }
-  }
 
-  if (btn) { btn.disabled = false; btn.textContent = 'Save & Publish Settings'; }
-}
+    async function loadConfig() {
+      try {
+        const res = await fetch('/api/config');
+        if (!res.ok) return;
+        const data = await res.json();
+        const s = data.settings || {};
+        applyTheme(s);
 
-function isOnline(ls) {
-  if (!ls) return false;
-  const iso = String(ls).replace(' ', 'T') + (String(ls).endsWith('Z') ? '' : 'Z');
-  const t = Date.parse(iso);
-  return !isNaN(t) && (Date.now() - t) < 5 * 60000;
-}
+        document.getElementById('set-site-name').value = s.site_name || '';
+        document.getElementById('set-tagline').value = s.tagline || '';
+        document.getElementById('set-hero-title').value = s.hero_title || '';
+        document.getElementById('set-hero-points').value = s.hero_points || '';
+        document.getElementById('set-logo-url').value = s.logo_url || '';
+        document.getElementById('set-favicon-url').value = s.favicon_url || '';
+        document.getElementById('set-support-email').value = s.support_email || '';
 
-async function api(path, opts = {}) {
-  return fetch(path, {
-    method: opts.method || 'GET',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
-    body: opts.body ? JSON.stringify(opts.body) : undefined
-  });
-}
+        if (s.primary_color) {
+          document.getElementById('set-primary-color').value = s.primary_color;
+          syncColorPicker('pick-primary-color', s.primary_color);
+        }
+        if (s.accent_color) {
+          document.getElementById('set-accent-color').value = s.accent_color;
+          syncColorPicker('pick-accent-color', s.accent_color);
+        }
+        if (s.bg_color) {
+          document.getElementById('set-bg-color').value = s.bg_color;
+          syncColorPicker('pick-bg-color', s.bg_color);
+        }
+      } catch (e) {}
+    }
 
-function showUnauthorized(msg) {
-  $('login').classList.remove('hidden');
-  $('dash').classList.add('hidden');
-  $('li-email').value = localStorage.getItem('user_email') || '';
-  $('li-err').textContent = msg || '';
-}
+    async function saveSettings() {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Please log in as an admin first.');
+        window.location.href = '/';
+        return;
+      }
 
-function showDash() {
-  $('login').classList.add('hidden');
-  $('dash').classList.remove('hidden');
-  loadSetupQuestionsAndValues();
-  loadAll();
-}
+      const btn = document.getElementById('save-settings-btn');
+      const statusEl = document.getElementById('settings-status');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      statusEl.textContent = '';
 
-async function quickAdminLogin() {
-  const email = $('li-email').value.trim();
-  const password = $('li-pass').value.trim();
-  if (!email || !password) {
-    $('li-err').textContent = 'Please enter your email and password.';
-    return;
-  }
-  const r = await fetch('/api/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
-  });
-  const data = await r.json();
-  if (!r.ok || !data.token) {
-    $('li-err').textContent = data.error || 'Login failed.';
-    return;
-  }
-  TOKEN = data.token;
-  localStorage.setItem('token', data.token);
-  localStorage.setItem('user_name', data.name);
-  localStorage.setItem('user_email', data.email);
-  localStorage.setItem('member_number', data.member_number || '1');
-  localStorage.setItem('user_status', data.status || 'Approved');
-  localStorage.setItem('is_admin', data.is_admin ? '1' : '0');
-  localStorage.setItem('is_paid', data.is_paid ? '1' : '0');
+      const payload = {
+        site_name: document.getElementById('set-site-name').value.trim(),
+        tagline: document.getElementById('set-tagline').value.trim(),
+        hero_title: document.getElementById('set-hero-title').value.trim(),
+        hero_points: document.getElementById('set-hero-points').value.trim(),
+        logo_url: document.getElementById('set-logo-url').value.trim(),
+        favicon_url: document.getElementById('set-favicon-url').value.trim(),
+        primary_color: document.getElementById('set-primary-color').value.trim(),
+        accent_color: document.getElementById('set-accent-color').value.trim(),
+        bg_color: document.getElementById('set-bg-color').value.trim(),
+        support_email: document.getElementById('set-support-email').value.trim(),
+      };
 
-  const check = await api('/api/admin/users');
-  if (check.ok) {
-    const dashData = await check.json();
-    showDash();
-    renderDashboardData(dashData);
-  } else {
-    const errJson = await check.json().catch(() => ({}));
-    $('li-err').textContent = errJson.error || 'Account does not have administrator access.';
-  }
-}
+      try {
+        const res = await fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to save settings');
 
-async function boot() {
-  try {
-    const pub = await fetch('/api/config').then(r => r.ok ? r.json() : null);
-    if (pub && pub.settings) applyThemeValues(pub.settings);
-  } catch (e) {}
+        applyTheme(payload);
+        statusEl.style.color = 'var(--green)';
+        statusEl.textContent = '✓ Settings saved & published!';
+      } catch (err) {
+        statusEl.style.color = 'var(--red)';
+        statusEl.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save & Publish Settings';
+      }
+    }
 
-  TOKEN = localStorage.getItem('token') || '';
-  if (!TOKEN) {
-    window.location.href = '/';
-    return;
-  }
+    async function loadUsers() {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/';
+        return;
+      }
 
-  const res = await api('/api/admin/users');
-  if (res.ok) {
-    const data = await res.json();
-    showDash();
-    renderDashboardData(data);
-  } else {
-    const errJson = await res.json().catch(() => ({}));
-    showUnauthorized(errJson.error || 'Your account does not have administrator access.');
-  }
-}
+      try {
+        const res = await fetch('/api/admin/users', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.error || 'Access denied.');
+          window.location.href = '/';
+          return;
+        }
 
-async function act(path, body) {
-  const r = await api(path, { method: 'POST', body });
-  if (!r.ok) {
-    const j = await r.json().catch(() => ({}));
-    alert(j.error || 'Action failed.');
-  }
-  loadAll();
-}
+        ALL_USERS = data.users || [];
+        updateMetrics(ALL_USERS, data.total_posts || 0);
+        renderMembers();
+      } catch (err) {
+        document.getElementById('members-list').innerHTML =
+          `<div class="empty-state">Error loading members: ${escapeHtml(err.message)}</div>`;
+      }
+    }
 
-function setStatus(id, status) { act('/api/admin/user-status', { userId: id, status }); }
+    function updateMetrics(users, totalPosts) {
+      const total = users.length;
+      const nowMs = Date.now();
+      let totalClicks = 0;
+      let totalSessions = 0;
+      let active5m = 0;
+      let activeEver = 0;
+      let paidCount = 0;
 
-async function syncMembers() {
-  const btn = $('sync-members-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Syncing…'; }
-  try {
-    const r = await api('/api/admin/sync-members', { method: 'POST' });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) alert(j.error || 'Sync failed.');
-    else alert('Sheet updated: ' + (j.count != null ? j.count + ' member rows synced.' : 'done'));
-  } catch (e) { alert('Sync failed: ' + e.message); }
-  if (btn) { btn.disabled = false; btn.textContent = 'Sync Members Sheet'; }
-  loadAll();
-}
+      for (const u of users) {
+        const clicks = Number(u.click_count) || 0;
+        const sessions = Number(u.session_count) || 0;
+        totalClicks += clicks;
+        totalSessions += sessions;
+        if (Number(u.is_paid) === 1) paidCount++;
+        if (sessions > 0 || clicks > 0) activeEver++;
 
-async function loadAll() {
-  const res = await api('/api/admin/users');
-  if (!res.ok) return;
-  const data = await res.json();
-  renderDashboardData(data);
-}
+        const seenMs = u.last_seen ? Date.parse(u.last_seen) : 0;
+        if (seenMs && nowMs - seenMs <= 5 * 60 * 1000) {
+          active5m++;
+        }
+      }
 
-function renderDashboardData(data) {
-  const users = Array.isArray(data.users) ? data.users : [];
-  const totalUsers = users.length;
-  const totalSessions = users.reduce((sum, u) => sum + (Number(u.session_count) || 0), 0);
-  const totalClicks = users.reduce((sum, u) => sum + (Number(u.click_count) || 0), 0);
-  const activeNow = users.filter(u => isOnline(u.last_seen)).length;
-  const activeLearners = users.filter(u => (Number(u.lessons_done) || 0) > 0 || (Number(u.post_count) || 0) > 0).length;
-  const activeRate = totalUsers ? Math.round((activeLearners / totalUsers) * 100) : 0;
-  const avgSessions = totalUsers ? (totalSessions / totalUsers).toFixed(1) : '0';
-  const avgClicksPerSession = totalSessions ? (totalClicks / totalSessions).toFixed(1) : '0';
+      const activeRate = total > 0 ? Math.round((activeEver / total) * 100) : 0;
+      const avgSessions = total > 0 ? (totalSessions / total).toFixed(1) : '0.0';
+      const avgClicks = totalSessions > 0 ? (totalClicks / totalSessions).toFixed(1) : '0.0';
 
-  $('stats').innerHTML = `
-    <div class="card"><b>${totalUsers}</b><span>Members</span></div>
-    <div class="card"><b>${totalSessions}</b><span>Total Sessions</span></div>
-    <div class="card"><b>${totalClicks}</b><span>Total Clicks</span></div>
-    <div class="card"><b>${data.total_posts || 0}</b><span>Posts</span></div>
-    <div class="card"><b>${activeNow}</b><span>Active users (last 5 min)</span></div>`;
+      document.getElementById('m-total-users').textContent = total;
+      document.getElementById('m-total-clicks').textContent = totalClicks;
+      document.getElementById('m-total-posts').textContent = totalPosts;
+      document.getElementById('m-active-5m').textContent = active5m;
+      document.getElementById('m-paid-users').textContent = paidCount;
+      document.getElementById('m-active-rate').textContent = activeRate + '%';
+      document.getElementById('m-avg-sessions').textContent = avgSessions;
+      document.getElementById('m-avg-clicks').textContent = avgClicks;
+    }
 
-  $('analytics').innerHTML = `
-    <div class="card"><b>${totalUsers}</b><span>Total users</span></div>
-    <div class="card"><b>${activeLearners}</b><span>Active learners</span></div>
-    <div class="card"><b>${activeRate}%</b><span>Active member rate</span></div>
-    <div class="card"><b>${avgSessions}</b><span>Avg sessions / user</span></div>
-    <div class="card"><b>${avgClicksPerSession}</b><span>Avg clicks / session</span></div>`;
+    function setFilter(filter, btnEl) {
+      CURRENT_FILTER = filter;
+      document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+      btnEl.classList.add('active');
+      renderMembers();
+    }
 
-  $('members').innerHTML = users.length ? users.map(u => {
-    const on = isOnline(u.last_seen);
-    const isPaid = u.is_paid === 1;
-    const isApproved = u.status === 'Approved';
-    const isPending = (u.status || 'Pending') === 'Pending';
-    const isBanned = u.status === 'Banned';
+    function renderMembers() {
+      const container = document.getElementById('members-list');
+      let list = ALL_USERS;
 
-    return `
-      <div class="row">
-        <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
-          <b>${esc(u.member_number || '')} ${esc(u.name)}</b>
-          <span class="dot ${on ? 'on' : 'off'}" title="${on ? 'On site now' : 'Last seen ' + (u.last_seen || 'never')}"></span>
-          ${isBanned ? '<span class="badge r">BANNED</span>' : ''}
-          ${u.is_admin ? '<span class="badge a">ADMIN</span>' : ''}
-          <span class="chip">Sessions ${u.session_count || 0}</span>
-          <span class="chip">Clicks ${u.click_count || 0}</span>
-          <span class="chip">Posts ${u.post_count || 0}</span>
-          <span class="chip">Modules ${u.modules_done || 0}</span>
-          <span class="chip">Lessons ${u.lessons_done || 0}</span>
-          <span class="muted">${esc(u.email)} &middot; joined ${esc((u.created_at || '').slice(0, 10))}</span>
-        </div>
-        <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
-          <button class="${isPaid ? 'btn-primary' : 'btn-ghost'} btn-mini" onclick="act('/api/admin/user-paid', { userId: ${u.id}, is_paid: ${isPaid ? 0 : 1} })">${isPaid ? 'Paid' : 'Free'}</button>
-          <button class="${isApproved ? 'btn-green' : 'btn-ghost'} btn-mini" ${isApproved ? 'disabled' : ''} onclick="setStatus(${u.id}, 'Approved')">${isApproved ? 'Approved' : 'Approve'}</button>
-          <button class="${isPending ? 'btn-amber' : 'btn-ghost'} btn-mini" ${isPending ? 'disabled' : ''} onclick="setStatus(${u.id}, 'Pending')">Pending</button>
-          <button class="btn-red btn-mini" ${isBanned ? 'disabled' : ''} onclick="setStatus(${u.id}, 'Banned')">Banned</button>
-          <label class="chk"><input type="checkbox" ${u.is_admin ? 'checked' : ''} onchange="act('/api/admin/user-admin', { userId: ${u.id}, is_admin: this.checked ? 1 : 0 })"> Admin</label>
-          <button class="btn-ghost btn-mini" onclick="resetPw(${u.id})">Reset PW</button>
-        </div>
-      </div>
-    `;
-  }).join('') : '<p class="muted">No members enrolled.</p>';
-}
+      if (CURRENT_FILTER === 'Approved') {
+        list = ALL_USERS.filter(u => u.status === 'Approved');
+      } else if (CURRENT_FILTER === 'Pending') {
+        list = ALL_USERS.filter(u => (u.status || 'Pending') === 'Pending');
+      } else if (CURRENT_FILTER === 'paid') {
+        list = ALL_USERS.filter(u => Number(u.is_paid) === 1);
+      }
 
-async function resetPw(id) {
-  if (!confirm("Reset this member's password back to their email address?")) return;
-  act('/api/admin/reset-password', { userId: id });
-}
+      if (list.length === 0) {
+        container.innerHTML = '<div class="empty-state">No members match this filter.</div>';
+        return;
+      }
 
-setInterval(() => { if (TOKEN) api('/api/heartbeat').catch(() => {}); }, 60000);
-setInterval(() => { if (TOKEN && !$('dash').classList.contains('hidden')) loadAll(); }, 60000);
-boot();
-</script>
+      container.innerHTML = list.map(u => {
+        const num = u.member_number || u.id;
+        const status = u.status || 'Pending';
+        const statusClass = status.toLowerCase();
+        const isPaid = Number(u.is_paid) === 1;
+        const isAdmin = Number(u.is_admin) === 1 || String(num) === '1';
+        const joined = u.created_at ? String(u.created_at).slice(0, 10) : '';
+
+        return `
+          <div class="member-card">
+            <div class="member-main">
+              <div class="member-top">
+                <span class="member-num">#${escapeHtml(num)}</span>
+                <span class="member-name">${escapeHtml(u.name)}</span>
+                <span class="badge ${escapeHtml(statusClass)}">${escapeHtml(status)}</span>
+                <span class="badge ${isPaid ? 'paid' : 'free'}">${isPaid ? 'Paid' : 'Free'}</span>
+                ${isAdmin ? '<span class="badge admin">Admin</span>' : ''}
+              </div>
+              <div class="member-meta">
+                <span class="stat-chip">Sessions ${Number(u.session_count) || 0}</span>
+                <span class="stat-chip">Clicks ${Number(u.click_count) || 0}</span>
+                <span class="stat-chip">Posts ${Number(u.post_count) || 0}</span>
+                <span class="stat-chip">Modules ${Number(u.modules_done) || 0}</span>
+                <span class="stat-chip">Lessons ${Number(u.lessons_done) || 0}</span>
+                <span>${escapeHtml(u.email)} · joined ${escapeHtml(joined)}</span>
+              </div>
+            </div>
+            <div class="member-actions">
+              ${status !== 'Approved' ? `<button class="btn small primary" onclick="updateUserStatus(${u.id}, 'Approved')">Approve</button>` : ''}
+              ${status === 'Approved' && String(num) !== '1' ? `<button class="btn small" onclick="updateUserStatus(${u.id}, 'Pending')">Set Pending</button>` : ''}
+              <button class="btn small" onclick="toggleUserPaid(${u.id}, ${isPaid ? 0 : 1})">${isPaid ? 'Set Free' : 'Make Paid'}</button>
+              ${String(num) !== '1' ? `<button class="btn small" onclick="toggleUserAdmin(${u.id}, ${isAdmin ? 0 : 1})">${isAdmin ? 'Remove Admin' : 'Make Admin'}</button>` : ''}
+              <button class="btn small danger" onclick="resetUserPassword(${u.id}, '${escapeHtml(u.email)}')">Reset PW</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function adminPost(endpoint, payload) {
+      const token = localStorage.getItem('token');
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Action failed');
+      return data;
+    }
+
+    async function updateUserStatus(userId, status) {
+      try {
+        await adminPost('/api/admin/user-status', { userId, status });
+        await loadUsers();
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    async function toggleUserPaid(userId, is_paid) {
+      try {
+        await adminPost('/api/admin/user-paid', { userId, is_paid });
+        await loadUsers();
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    async function toggleUserAdmin(userId, is_admin) {
+      try {
+        await adminPost('/api/admin/user-admin', { userId, is_admin });
+        await loadUsers();
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    async function resetUserPassword(userId, email) {
+      if (!confirm(`Reset password for ${email} back to their email address?`)) return;
+      try {
+        await adminPost('/api/admin/reset-password', { userId });
+        alert(`Password reset to ${email}`);
+      } catch (e) {
+        alert(e.message);
+      }
+    }
+
+    async function syncMembersSheet() {
+      const btn = document.getElementById('sync-btn');
+      btn.disabled = true;
+      btn.textContent = 'Syncing...';
+      try {
+        const data = await adminPost('/api/admin/sync-members', {});
+        alert(data.message || 'Members synced to Google Sheet!');
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Sync Members Sheet';
+      }
+    }
+
+    if (localStorage.getItem('admin_setup_collapsed') === '1') {
+      document.getElementById('setup-card').classList.add('collapsed');
+    }
+
+    loadConfig();
+    loadUsers();
+  </script>
 </body>
 </html>
