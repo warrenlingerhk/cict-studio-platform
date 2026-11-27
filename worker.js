@@ -3,8 +3,9 @@
 // ============================================================================
 // MULTI-TENANT SAAS CLOUDFLARE WORKER (worker.js)
 // Routes requests by hostname via Master Tenants Sheet & binds D1 dynamically
-// Includes POST /api/auto-enroll (Google-verified auto-approved enrollment)
-// Zero DNS lookups or hardcoded domains
+// Includes POST /api/auto-enroll (supports per-tenant slot secrets)
+// Includes GET /api/me (returns real D1 created_at for server-verified timers)
+// Supports 2 configurable Offer Funnel Slots per tenant in D1 settings
 // ============================================================================
 
 const MASTER_CSV_URL =
@@ -318,7 +319,7 @@ export default {
 
       await ensureSchema(db);
 
-      // 1. GET /api/config
+      // 1. GET /api/config (Includes Offer Funnel Slot 1 & Slot 2 settings)
       if (path === '/api/config' && request.method === 'GET') {
         const dbRows = await db.prepare('SELECT key, value FROM settings').all();
         const dbSettings = {};
@@ -337,6 +338,28 @@ export default {
           accent_color: dbSettings.accent_color || tenant.settings.accent_color || '#D4AF37',
           bg_color: dbSettings.bg_color || tenant.settings.bg_color || '#F8F9FA',
           support_email: dbSettings.support_email || tenant.settings.support_email || '',
+          // Offer Slot 1
+          offer_1_enabled: dbSettings.offer_1_enabled || '0',
+          offer_1_title: dbSettings.offer_1_title || '',
+          offer_1_subtitle: dbSettings.offer_1_subtitle || '',
+          offer_1_bullets: dbSettings.offer_1_bullets || '',
+          offer_1_timer_mins: dbSettings.offer_1_timer_mins || '60',
+          offer_1_fast_price: dbSettings.offer_1_fast_price || '',
+          offer_1_fast_url: dbSettings.offer_1_fast_url || '',
+          offer_1_reg_price: dbSettings.offer_1_reg_price || '',
+          offer_1_reg_url: dbSettings.offer_1_reg_url || '',
+          offer_1_secret: dbSettings.offer_1_secret || '',
+          // Offer Slot 2
+          offer_2_enabled: dbSettings.offer_2_enabled || '0',
+          offer_2_title: dbSettings.offer_2_title || '',
+          offer_2_subtitle: dbSettings.offer_2_subtitle || '',
+          offer_2_bullets: dbSettings.offer_2_bullets || '',
+          offer_2_timer_mins: dbSettings.offer_2_timer_mins || '60',
+          offer_2_fast_price: dbSettings.offer_2_fast_price || '',
+          offer_2_fast_url: dbSettings.offer_2_fast_url || '',
+          offer_2_reg_price: dbSettings.offer_2_reg_price || '',
+          offer_2_reg_url: dbSettings.offer_2_reg_url || '',
+          offer_2_secret: dbSettings.offer_2_secret || '',
         };
 
         return jsonResponse({
@@ -344,6 +367,23 @@ export default {
           db_binding: tenant.db_binding,
           cms_csv_url: tenant.cms_csv_url,
           settings: mergedSettings,
+        });
+      }
+
+      // 1b. GET /api/me (Returns authenticated member profile + exact created_at timestamp)
+      if (path === '/api/me' && request.method === 'GET') {
+        const user = await getAuthUser(request, db);
+        if (!user) return jsonResponse({ authenticated: false }, 200);
+        return jsonResponse({
+          authenticated: true,
+          id: user.id,
+          member_number: user.member_number || String(user.id),
+          name: user.name,
+          email: user.email,
+          status: user.status || 'Approved',
+          is_paid: Number(user.is_paid) === 1 ? 1 : 0,
+          is_admin: Number(user.is_admin) === 1 || String(user.member_number) === '1' ? 1 : 0,
+          created_at: user.created_at || new Date().toISOString(),
         });
       }
 
@@ -388,16 +428,28 @@ export default {
           status,
           is_admin: isAdmin,
           is_paid: 0,
+          created_at: nowIso,
         });
       }
 
-      // 2b. POST /api/auto-enroll (Google Drive-Verified Enrollment from Quiz Apps Script)
+      // 2b. POST /api/auto-enroll (Supports global secret OR tenant slot 1 / slot 2 secrets)
       if (path === '/api/auto-enroll' && request.method === 'POST') {
         const body = await request.json().catch(() => ({}));
-        const expectedSecret = (env.AUTO_ENROLL_SECRET || AUTO_ENROLL_SECRET).trim();
         const providedSecret = String(body.secret || '').trim();
 
-        if (!providedSecret || providedSecret !== expectedSecret) {
+        const validSecrets = new Set();
+        const envSecret = (env.AUTO_ENROLL_SECRET || AUTO_ENROLL_SECRET).trim();
+        if (envSecret) validSecrets.add(envSecret);
+
+        const slotSecretRows = await db
+          .prepare("SELECT value FROM settings WHERE key IN ('offer_1_secret', 'offer_2_secret')")
+          .all();
+        for (const r of slotSecretRows.results || []) {
+          const v = String(r.value || '').trim();
+          if (v) validSecrets.add(v);
+        }
+
+        if (!providedSecret || !validSecrets.has(providedSecret)) {
           return jsonResponse({ error: 'Unauthorized enrollment secret.' }, 401);
         }
 
@@ -427,6 +479,7 @@ export default {
             email,
             status: 'Approved',
             is_paid: Number(existing.is_paid) === 1 ? 1 : 0,
+            created_at: existing.created_at || nowIso,
           });
         }
 
@@ -452,6 +505,7 @@ export default {
           temp_password: email,
           status: 'Approved',
           is_paid: 0,
+          created_at: nowIso,
         });
       }
 
@@ -485,6 +539,7 @@ export default {
           status: user.status || 'Approved',
           is_admin: isAdminFlag,
           is_paid: Number(user.is_paid) === 1 ? 1 : 0,
+          created_at: user.created_at || nowIso,
           google_verified: Number(user.google_verified) === 1 || /@(gmail|googlemail)\.com$/i.test(user.email) ? 1 : 0,
         });
       }
@@ -1084,6 +1139,28 @@ export default {
           'accent_color',
           'bg_color',
           'support_email',
+          // Offer Funnel Slot 1
+          'offer_1_enabled',
+          'offer_1_title',
+          'offer_1_subtitle',
+          'offer_1_bullets',
+          'offer_1_timer_mins',
+          'offer_1_fast_price',
+          'offer_1_fast_url',
+          'offer_1_reg_price',
+          'offer_1_reg_url',
+          'offer_1_secret',
+          // Offer Funnel Slot 2
+          'offer_2_enabled',
+          'offer_2_title',
+          'offer_2_subtitle',
+          'offer_2_bullets',
+          'offer_2_timer_mins',
+          'offer_2_fast_price',
+          'offer_2_fast_url',
+          'offer_2_reg_price',
+          'offer_2_reg_url',
+          'offer_2_secret',
         ];
 
         for (const key of allowedKeys) {
