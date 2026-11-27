@@ -538,6 +538,11 @@
             <div class="hint">Enter the official support email address for class member inquiries.</div>
             <input type="email" id="set-support-email" placeholder="support@yourdomain.com">
           </div>
+          <div class="setup-field">
+            <label for="set-email-signing-name">Email Signing Name</label>
+            <div class="hint">Enter the name used to sign automated progress recap emails.</div>
+            <input type="text" id="set-email-signing-name" placeholder="e.g. DrWarren">
+          </div>
         </div>
 
         <div class="setup-actions">
@@ -866,6 +871,7 @@
         document.getElementById('set-logo-url').value = s.logo_url || '';
         document.getElementById('set-favicon-url').value = s.favicon_url || '';
         document.getElementById('set-support-email').value = s.support_email || '';
+        document.getElementById('set-email-signing-name').value = s.email_signing_name || '';
 
         if (s.primary_color) {
           document.getElementById('set-primary-color').value = s.primary_color;
@@ -932,6 +938,7 @@
         accent_color: document.getElementById('set-accent-color').value.trim(),
         bg_color: document.getElementById('set-bg-color').value.trim(),
         support_email: document.getElementById('set-support-email').value.trim(),
+        email_signing_name: document.getElementById('set-email-signing-name').value.trim(),
         // Offer Slot 1
         offer_1_enabled: document.getElementById('o1-enabled').value,
         offer_1_title: document.getElementById('o1-title').value.trim(),
