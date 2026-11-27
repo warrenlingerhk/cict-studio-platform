@@ -149,13 +149,13 @@
       color: var(--primary);
     }
 
-    /* COLLAPSIBLE CARD (SITE SETUP) */
+    /* COLLAPSIBLE CARD (SITE SETUP & OFFER SLOTS) */
     .setup-card {
       background: var(--card);
       border: 1px solid var(--border);
       border-left: 5px solid var(--accent);
       border-radius: 16px;
-      margin-bottom: 28px;
+      margin-bottom: 22px;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
       overflow: hidden;
     }
@@ -191,6 +191,9 @@
       border-radius: 999px;
       text-transform: uppercase;
       letter-spacing: 0.04em;
+    }
+    .setup-badge.live {
+      background: var(--green);
     }
     .chevron {
       color: var(--accent);
@@ -235,7 +238,9 @@
       min-height: 32px;
     }
     .setup-field input[type="text"],
-    .setup-field input[type="email"] {
+    .setup-field input[type="email"],
+    .setup-field input[type="number"],
+    .setup-field select {
       width: 100%;
       padding: 10px 12px;
       border: 1.5px solid var(--border);
@@ -246,7 +251,8 @@
       background: #FFFFFF;
       transition: border-color 0.15s ease;
     }
-    .setup-field input:focus {
+    .setup-field input:focus,
+    .setup-field select:focus {
       outline: none;
       border-color: var(--primary);
     }
@@ -263,6 +269,24 @@
       padding: 2px;
       background: #FFFFFF;
       cursor: pointer;
+    }
+    .offer-url-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: #F8FAFC;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 18px;
+    }
+    .offer-url-bar code {
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: var(--primary);
+      word-break: break-all;
     }
     .setup-actions {
       display: flex;
@@ -443,9 +467,9 @@
 
     <!-- COLLAPSIBLE SITE SETUP CARD -->
     <section class="setup-card" id="setup-card">
-      <div class="setup-header" onclick="toggleSetupCard()">
+      <div class="setup-header" onclick="toggleCard('setup-card', 'admin_setup_collapsed')">
         <div class="setup-title-wrap">
-          <h2>Onboarding & Academy Foundations</h2>
+          <h2>Onboarding &amp; Academy Foundations</h2>
           <span class="setup-badge">Site Setup</span>
         </div>
         <span class="chevron">▲</span>
@@ -517,8 +541,182 @@
         </div>
 
         <div class="setup-actions">
-          <button class="btn primary" id="save-settings-btn" onclick="saveSettings()">Save & Publish Settings</button>
-          <span class="status-msg" id="settings-status"></span>
+          <button class="btn primary save-all-btn" onclick="saveSettings()">Save &amp; Publish Settings</button>
+          <span class="status-msg settings-status"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- OFFER FUNNEL SLOT 1 -->
+    <section class="setup-card collapsed" id="offer-1-card">
+      <div class="setup-header" onclick="toggleCard('offer-1-card', 'admin_offer1_collapsed')">
+        <div class="setup-title-wrap">
+          <h2>Offer Funnel Slot 1 (Quiz / Fast-Action Upsell)</h2>
+          <span class="setup-badge" id="offer-1-badge">Slot 1</span>
+        </div>
+        <span class="chevron">▲</span>
+      </div>
+
+      <div class="setup-body">
+        <p class="setup-intro">Connect any payment gateway (Stripe, PayPal, Gumroad, ThriveCart, Calendly, or Google Forms). When the countdown expires, the button automatically switches from your Fast-Action link to your Standard link.</p>
+
+        <div class="offer-url-bar">
+          <div>
+            <div style="font-size:0.75rem; font-weight:700; color:var(--muted); text-transform:uppercase;">Live Offer Page URL (Paste into Form Confirmation or Emails):</div>
+            <code id="offer-1-live-url">https://studio.cict.co/offer.html?slot=1</code>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="btn small" onclick="copyOfferUrl(1)">Copy Link</button>
+            <a href="/offer.html?slot=1" target="_blank" class="btn small primary">Preview ↗</a>
+          </div>
+        </div>
+
+        <div class="setup-grid">
+          <div class="setup-field">
+            <label for="o1-enabled">Offer Slot Status</label>
+            <div class="hint">Enable or pause this fast-action offer page.</div>
+            <select id="o1-enabled">
+              <option value="1">Active (Live)</option>
+              <option value="0">Disabled / Hidden</option>
+            </select>
+          </div>
+          <div class="setup-field">
+            <label for="o1-title">Offer Headline</label>
+            <div class="hint">Main headline shown on your timed offer page.</div>
+            <input type="text" id="o1-title" placeholder="e.g. Legacy Business Starter Pack">
+          </div>
+          <div class="setup-field">
+            <label for="o1-subtitle">Offer Sub-Headline</label>
+            <div class="hint">Short value promise displayed below the main headline.</div>
+            <input type="text" id="o1-subtitle" placeholder="e.g. Fast-Action 53% Discount — Expires When Timer Hits Zero">
+          </div>
+          <div class="setup-field">
+            <label for="o1-bullets">Included Deliverables (Pipe | Separated)</label>
+            <div class="hint">List what the buyer unlocks immediately (separated by |).</div>
+            <input type="text" id="o1-bullets" placeholder="e.g. Full Certification Playbook|Done-For-You Legal Templates|All Paid Studio Modules">
+          </div>
+          <div class="setup-field">
+            <label for="o1-timer">Fast-Action Timer (Minutes)</label>
+            <div class="hint">Countdown length from member enrollment (e.g. 60 for 1 hour, 0 for no timer).</div>
+            <input type="number" id="o1-timer" min="0" value="60">
+          </div>
+          <div class="setup-field">
+            <label for="o1-fast-price">Fast-Action Price Label</label>
+            <div class="hint">Price shown while the countdown timer is active.</div>
+            <input type="text" id="o1-fast-price" placeholder="e.g. $18 (Save 53%)">
+          </div>
+          <div class="setup-field">
+            <label for="o1-fast-url">Fast-Action Checkout URL</label>
+            <div class="hint">Any payment gateway link for the discounted fast-action price.</div>
+            <input type="text" id="o1-fast-url" placeholder="https://buy.stripe.com/... or PayPal/Gumroad link">
+          </div>
+          <div class="setup-field">
+            <label for="o1-reg-price">Standard Price Label (After Timer)</label>
+            <div class="hint">Regular price shown after the countdown reaches 00:00.</div>
+            <input type="text" id="o1-reg-price" placeholder="e.g. $38">
+          </div>
+          <div class="setup-field">
+            <label for="o1-reg-url">Standard Checkout URL (After Timer)</label>
+            <div class="hint">Payment gateway link used once the fast-action window expires.</div>
+            <input type="text" id="o1-reg-url" placeholder="https://buy.stripe.com/... or standard link">
+          </div>
+          <div class="setup-field">
+            <label for="o1-secret">Auto-Enroll Webhook Secret (Optional)</label>
+            <div class="hint">Secret key for your Google Form Apps Script to auto-enroll leads into this portal.</div>
+            <input type="text" id="o1-secret" placeholder="e.g. my-quiz-secret-2026">
+          </div>
+        </div>
+
+        <div class="setup-actions">
+          <button class="btn primary save-all-btn" onclick="saveSettings()">Save &amp; Publish Settings</button>
+          <span class="status-msg settings-status"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- OFFER FUNNEL SLOT 2 -->
+    <section class="setup-card collapsed" id="offer-2-card">
+      <div class="setup-header" onclick="toggleCard('offer-2-card', 'admin_offer2_collapsed')">
+        <div class="setup-title-wrap">
+          <h2>Offer Funnel Slot 2 (Workshop / VIP Offer)</h2>
+          <span class="setup-badge" id="offer-2-badge">Slot 2</span>
+        </div>
+        <span class="chevron">▲</span>
+      </div>
+
+      <div class="setup-body">
+        <p class="setup-intro">Second independent offer slot for another lead magnet, workshop replay, or VIP upgrade using any payment processor.</p>
+
+        <div class="offer-url-bar">
+          <div>
+            <div style="font-size:0.75rem; font-weight:700; color:var(--muted); text-transform:uppercase;">Live Offer Page URL:</div>
+            <code id="offer-2-live-url">https://studio.cict.co/offer.html?slot=2</code>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="btn small" onclick="copyOfferUrl(2)">Copy Link</button>
+            <a href="/offer.html?slot=2" target="_blank" class="btn small primary">Preview ↗</a>
+          </div>
+        </div>
+
+        <div class="setup-grid">
+          <div class="setup-field">
+            <label for="o2-enabled">Offer Slot Status</label>
+            <div class="hint">Enable or pause this second offer page.</div>
+            <select id="o2-enabled">
+              <option value="0">Disabled / Hidden</option>
+              <option value="1">Active (Live)</option>
+            </select>
+          </div>
+          <div class="setup-field">
+            <label for="o2-title">Offer Headline</label>
+            <div class="hint">Main headline shown on Offer Slot 2.</div>
+            <input type="text" id="o2-title" placeholder="e.g. VIP Implementation Intensive">
+          </div>
+          <div class="setup-field">
+            <label for="o2-subtitle">Offer Sub-Headline</label>
+            <div class="hint">Short value promise displayed below the main headline.</div>
+            <input type="text" id="o2-subtitle" placeholder="e.g. Limited-Time Fast-Action Bonus">
+          </div>
+          <div class="setup-field">
+            <label for="o2-bullets">Included Deliverables (Pipe | Separated)</label>
+            <div class="hint">List what the buyer unlocks immediately (separated by |).</div>
+            <input type="text" id="o2-bullets" placeholder="e.g. 1-on-1 Architecture Audit|Custom Vault Setup|Priority Support">
+          </div>
+          <div class="setup-field">
+            <label for="o2-timer">Fast-Action Timer (Minutes)</label>
+            <div class="hint">Countdown length from member enrollment (e.g. 60 for 1 hour, 0 for no timer).</div>
+            <input type="number" id="o2-timer" min="0" value="60">
+          </div>
+          <div class="setup-field">
+            <label for="o2-fast-price">Fast-Action Price Label</label>
+            <div class="hint">Price shown while the countdown timer is active.</div>
+            <input type="text" id="o2-fast-price" placeholder="e.g. $97">
+          </div>
+          <div class="setup-field">
+            <label for="o2-fast-url">Fast-Action Checkout URL</label>
+            <div class="hint">Any payment gateway link for the discounted fast-action price.</div>
+            <input type="text" id="o2-fast-url" placeholder="https://...">
+          </div>
+          <div class="setup-field">
+            <label for="o2-reg-price">Standard Price Label (After Timer)</label>
+            <div class="hint">Regular price shown after the countdown reaches 00:00.</div>
+            <input type="text" id="o2-reg-price" placeholder="e.g. $197">
+          </div>
+          <div class="setup-field">
+            <label for="o2-reg-url">Standard Checkout URL (After Timer)</label>
+            <div class="hint">Payment gateway link used once the fast-action window expires.</div>
+            <input type="text" id="o2-reg-url" placeholder="https://...">
+          </div>
+          <div class="setup-field">
+            <label for="o2-secret">Auto-Enroll Webhook Secret (Optional)</label>
+            <div class="hint">Secret key for a second Google Form Apps Script to auto-enroll leads.</div>
+            <input type="text" id="o2-secret" placeholder="e.g. workshop-secret-2026">
+          </div>
+        </div>
+
+        <div class="setup-actions">
+          <button class="btn primary save-all-btn" onclick="saveSettings()">Save &amp; Publish Settings</button>
+          <span class="status-msg settings-status"></span>
         </div>
       </div>
     </section>
@@ -598,10 +796,19 @@
         .replace(/'/g, '&#39;');
     }
 
-    function toggleSetupCard() {
-      const card = document.getElementById('setup-card');
+    function toggleCard(cardId, storageKey) {
+      const card = document.getElementById(cardId);
       card.classList.toggle('collapsed');
-      localStorage.setItem('admin_setup_collapsed', card.classList.contains('collapsed') ? '1' : '0');
+      localStorage.setItem(storageKey, card.classList.contains('collapsed') ? '1' : '0');
+    }
+
+    function copyOfferUrl(slot) {
+      const url = `${window.location.origin}/offer.html?slot=${slot}`;
+      navigator.clipboard.writeText(url).then(() => {
+        alert('Copied offer URL: ' + url);
+      }).catch(() => {
+        prompt('Copy this Offer URL:', url);
+      });
     }
 
     function syncColorPicker(pickerId, hex) {
@@ -630,7 +837,21 @@
       }
     }
 
+    function updateOfferBadges() {
+      const b1 = document.getElementById('offer-1-badge');
+      const b2 = document.getElementById('offer-2-badge');
+      const e1 = document.getElementById('o1-enabled').value === '1';
+      const e2 = document.getElementById('o2-enabled').value === '1';
+      b1.textContent = e1 ? 'Slot 1 · Live' : 'Slot 1';
+      b1.classList.toggle('live', e1);
+      b2.textContent = e2 ? 'Slot 2 · Live' : 'Slot 2';
+      b2.classList.toggle('live', e2);
+    }
+
     async function loadConfig() {
+      document.getElementById('offer-1-live-url').textContent = `${window.location.origin}/offer.html?slot=1`;
+      document.getElementById('offer-2-live-url').textContent = `${window.location.origin}/offer.html?slot=2`;
+
       try {
         const res = await fetch('/api/config');
         if (!res.ok) return;
@@ -658,6 +879,32 @@
           document.getElementById('set-bg-color').value = s.bg_color;
           syncColorPicker('pick-bg-color', s.bg_color);
         }
+
+        // Offer Slot 1
+        document.getElementById('o1-enabled').value = s.offer_1_enabled === '1' ? '1' : '0';
+        document.getElementById('o1-title').value = s.offer_1_title || '';
+        document.getElementById('o1-subtitle').value = s.offer_1_subtitle || '';
+        document.getElementById('o1-bullets').value = s.offer_1_bullets || '';
+        document.getElementById('o1-timer').value = s.offer_1_timer_mins !== undefined ? s.offer_1_timer_mins : '60';
+        document.getElementById('o1-fast-price').value = s.offer_1_fast_price || '';
+        document.getElementById('o1-fast-url').value = s.offer_1_fast_url || '';
+        document.getElementById('o1-reg-price').value = s.offer_1_reg_price || '';
+        document.getElementById('o1-reg-url').value = s.offer_1_reg_url || '';
+        document.getElementById('o1-secret').value = s.offer_1_secret || '';
+
+        // Offer Slot 2
+        document.getElementById('o2-enabled').value = s.offer_2_enabled === '1' ? '1' : '0';
+        document.getElementById('o2-title').value = s.offer_2_title || '';
+        document.getElementById('o2-subtitle').value = s.offer_2_subtitle || '';
+        document.getElementById('o2-bullets').value = s.offer_2_bullets || '';
+        document.getElementById('o2-timer').value = s.offer_2_timer_mins !== undefined ? s.offer_2_timer_mins : '60';
+        document.getElementById('o2-fast-price').value = s.offer_2_fast_price || '';
+        document.getElementById('o2-fast-url').value = s.offer_2_fast_url || '';
+        document.getElementById('o2-reg-price').value = s.offer_2_reg_price || '';
+        document.getElementById('o2-reg-url').value = s.offer_2_reg_url || '';
+        document.getElementById('o2-secret').value = s.offer_2_secret || '';
+
+        updateOfferBadges();
       } catch (e) {}
     }
 
@@ -669,11 +916,10 @@
         return;
       }
 
-      const btn = document.getElementById('save-settings-btn');
-      const statusEl = document.getElementById('settings-status');
-      btn.disabled = true;
-      btn.textContent = 'Saving...';
-      statusEl.textContent = '';
+      const btns = document.querySelectorAll('.save-all-btn');
+      const statusEls = document.querySelectorAll('.settings-status');
+      btns.forEach(b => { b.disabled = true; b.textContent = 'Saving...'; });
+      statusEls.forEach(el => { el.textContent = ''; });
 
       const payload = {
         site_name: document.getElementById('set-site-name').value.trim(),
@@ -686,6 +932,28 @@
         accent_color: document.getElementById('set-accent-color').value.trim(),
         bg_color: document.getElementById('set-bg-color').value.trim(),
         support_email: document.getElementById('set-support-email').value.trim(),
+        // Offer Slot 1
+        offer_1_enabled: document.getElementById('o1-enabled').value,
+        offer_1_title: document.getElementById('o1-title').value.trim(),
+        offer_1_subtitle: document.getElementById('o1-subtitle').value.trim(),
+        offer_1_bullets: document.getElementById('o1-bullets').value.trim(),
+        offer_1_timer_mins: String(Math.max(0, parseInt(document.getElementById('o1-timer').value, 10) || 0)),
+        offer_1_fast_price: document.getElementById('o1-fast-price').value.trim(),
+        offer_1_fast_url: document.getElementById('o1-fast-url').value.trim(),
+        offer_1_reg_price: document.getElementById('o1-reg-price').value.trim(),
+        offer_1_reg_url: document.getElementById('o1-reg-url').value.trim(),
+        offer_1_secret: document.getElementById('o1-secret').value.trim(),
+        // Offer Slot 2
+        offer_2_enabled: document.getElementById('o2-enabled').value,
+        offer_2_title: document.getElementById('o2-title').value.trim(),
+        offer_2_subtitle: document.getElementById('o2-subtitle').value.trim(),
+        offer_2_bullets: document.getElementById('o2-bullets').value.trim(),
+        offer_2_timer_mins: String(Math.max(0, parseInt(document.getElementById('o2-timer').value, 10) || 0)),
+        offer_2_fast_price: document.getElementById('o2-fast-price').value.trim(),
+        offer_2_fast_url: document.getElementById('o2-fast-url').value.trim(),
+        offer_2_reg_price: document.getElementById('o2-reg-price').value.trim(),
+        offer_2_reg_url: document.getElementById('o2-reg-url').value.trim(),
+        offer_2_secret: document.getElementById('o2-secret').value.trim(),
       };
 
       try {
@@ -701,14 +969,18 @@
         if (!res.ok) throw new Error(data.error || 'Failed to save settings');
 
         applyTheme(payload);
-        statusEl.style.color = 'var(--green)';
-        statusEl.textContent = '✓ Settings saved & published!';
+        updateOfferBadges();
+        statusEls.forEach(el => {
+          el.style.color = 'var(--green)';
+          el.textContent = '✓ All settings & offer slots saved!';
+        });
       } catch (err) {
-        statusEl.style.color = 'var(--red)';
-        statusEl.textContent = err.message;
+        statusEls.forEach(el => {
+          el.style.color = 'var(--red)';
+          el.textContent = err.message;
+        });
       } finally {
-        btn.disabled = false;
-        btn.textContent = 'Save & Publish Settings';
+        btns.forEach(b => { b.disabled = false; b.textContent = 'Save & Publish Settings'; });
       }
     }
 
@@ -908,6 +1180,12 @@
 
     if (localStorage.getItem('admin_setup_collapsed') === '1') {
       document.getElementById('setup-card').classList.add('collapsed');
+    }
+    if (localStorage.getItem('admin_offer1_collapsed') === '0') {
+      document.getElementById('offer-1-card').classList.remove('collapsed');
+    }
+    if (localStorage.getItem('admin_offer2_collapsed') === '0') {
+      document.getElementById('offer-2-card').classList.remove('collapsed');
     }
 
     loadConfig();
