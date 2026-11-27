@@ -1,10 +1,18 @@
+
+
 // ============================================================================
 // MULTI-TENANT SAAS WORKER (worker.js)
 // Cloudflare Workers + D1 + Google Sheets CMS/AMS
+// Supports:
+// - GET /api/me (returns real D1 created_at for server-verified countdown timers)
+// - POST /api/auto-enroll (supports free & paid auto-enrollment + slot secrets)
+// - 2 Offer Funnel Slots per tenant in D1 settings
 // ============================================================================
 
 const MASTER_CSV_URL =
   'https://docs.google.com/spreadsheets/d/e/2PACX-1vTgotv2zBG-2uYmMPtCyXUP1z6TtgJ1Cg6WxocccVq29lbixrkiGvpkVawVtxz-_-I-OZHIJNHN58el/pub?gid=0&single=true&output=csv';
+
+const DEFAULT_AUTO_ENROLL_SECRET = 'legacycp-studio-enroll-2026';
 
 export default {
   async fetch(request, env, ctx) {
@@ -66,7 +74,24 @@ export default {
         return json({ cms_csv_url: tenant.cms_csv_url, settings: mergedSettings });
       }
 
-      // 2. AUTH ROUTES
+      // 1b. GET /api/me (Returns authenticated member profile + exact created_at timestamp)
+      if (path === '/api/me' && request.method === 'GET') {
+        const me = await getAuthUser(request, env.DB, domain);
+        if (!me) return json({ authenticated: false }, 200);
+        return json({
+          authenticated: true,
+          id: me.id,
+          member_number: me.member_number,
+          name: me.name,
+          email: me.email,
+          status: me.status || 'Approved',
+          is_paid: Number(me.is_paid) === 1 ? 1 : 0,
+          is_admin: Number(me.is_admin) === 1 || String(me.member_number) === '1' ? 1 : 0,
+          created_at: me.created_at || new Date().toISOString()
+        });
+      }
+
+      // 2. AUTH & AUTO-ENROLL ROUTES
       if (path === '/api/signup' && request.method === 'POST') {
         const body = await request.json();
         const name = String(body.name || '').trim();
@@ -104,7 +129,87 @@ export default {
           'INSERT INTO sessions (token, user_id, tenant_domain, created_at) VALUES (?, ?, ?, ?)'
         ).bind(token, userId, domain, now).run();
 
-        return json({ token, name, email, member_number: memberNum, status, is_admin: isAdmin, is_paid: isPaid });
+        return json({ token, name, email, member_number: memberNum, status, is_admin: isAdmin, is_paid: isPaid, created_at: now });
+      }
+
+      // 2b. POST /api/auto-enroll (Free Quiz + Paid Business Starter Pack Fulfillment)
+      if (path === '/api/auto-enroll' && request.method === 'POST') {
+        const body = await request.json().catch(() => ({}));
+        const providedSecret = String(body.secret || '').trim();
+
+        const validSecrets = new Set();
+        const envSecret = String(env.AUTO_ENROLL_SECRET || DEFAULT_AUTO_ENROLL_SECRET).trim();
+        if (envSecret) validSecrets.add(envSecret);
+
+        const { results: slotSecrets } = await env.DB.prepare(
+          "SELECT value FROM settings WHERE tenant_domain = ? AND key IN ('offer_1_secret', 'offer_2_secret')"
+        ).bind(domain).all();
+        for (const row of slotSecrets || []) {
+          const val = String(row.value || '').trim();
+          if (val) validSecrets.add(val);
+        }
+
+        if (!providedSecret || !validSecrets.has(providedSecret)) {
+          return json({ error: 'Unauthorized enrollment secret.' }, 401);
+        }
+
+        const name = String(body.name || '').replace(/\s+/g, ' ').trim();
+        const email = String(body.email || '').trim().toLowerCase();
+        const upgradeToPaid = body.is_paid === true || Number(body.is_paid) === 1;
+
+        if (!name || !email) {
+          return json({ error: 'Name and email address are required.' }, 400);
+        }
+
+        const existing = await env.DB.prepare(
+          'SELECT * FROM users WHERE tenant_domain = ? AND email = ?'
+        ).bind(domain, email).first();
+
+        const now = new Date().toISOString();
+
+        if (existing) {
+          const nextPaid = upgradeToPaid ? 1 : (Number(existing.is_paid) === 1 ? 1 : 0);
+          await env.DB.prepare(
+            "UPDATE users SET name = ?, status = 'Approved', is_paid = ? WHERE id = ?"
+          ).bind(name || existing.name, nextPaid, existing.id).run();
+
+          ctx.waitUntil(syncMembersToAms(env, domain, tenant));
+
+          return json({
+            ok: true,
+            created: false,
+            member_number: existing.member_number,
+            email,
+            status: 'Approved',
+            is_paid: nextPaid,
+            created_at: existing.created_at || now
+          });
+        }
+
+        const countRow = await env.DB.prepare(
+          'SELECT COUNT(*) as cnt FROM users WHERE tenant_domain = ?'
+        ).bind(domain).first();
+        const memberNum = (countRow?.cnt || 0) + 1;
+        const hash = await hashPassword(email);
+        const initialPaid = upgradeToPaid ? 1 : 0;
+
+        await env.DB.prepare(
+          `INSERT INTO users (tenant_domain, member_number, name, email, password_hash, status, is_paid, is_admin, session_count, click_count, last_seen, created_at)
+           VALUES (?, ?, ?, ?, ?, 'Approved', ?, 0, 0, 0, ?, ?)`
+        ).bind(domain, memberNum, name, email, hash, initialPaid, now, now).run();
+
+        ctx.waitUntil(syncMembersToAms(env, domain, tenant));
+
+        return json({
+          ok: true,
+          created: true,
+          member_number: memberNum,
+          email,
+          temp_password: email,
+          status: 'Approved',
+          is_paid: initialPaid,
+          created_at: now
+        });
       }
 
       if (path === '/api/login' && request.method === 'POST') {
@@ -137,7 +242,8 @@ export default {
           member_number: user.member_number,
           status: user.status,
           is_admin: user.is_admin,
-          is_paid: user.is_paid
+          is_paid: user.is_paid,
+          created_at: user.created_at || now
         });
       }
 
@@ -145,7 +251,7 @@ export default {
         return json({ ok: true });
       }
 
-      // Check auth for routes below (optional for GET /api/events and POST /api/events/enroll)
+      // Check auth for routes below
       const user = await getAuthUser(request, env.DB, domain);
 
       if (path === '/api/change-password' && request.method === 'POST') {
@@ -231,7 +337,6 @@ export default {
         const answer = String(body.answer ?? '');
         const now = new Date().toISOString();
 
-        // Upsert in D1
         const existing = await env.DB.prepare(
           'SELECT id FROM answers WHERE tenant_domain = ? AND user_id = ? AND lesson_tab = ? AND item_code = ?'
         ).bind(domain, user.id, lessonTab, itemCode).first();
@@ -246,7 +351,6 @@ export default {
           ).bind(domain, user.id, lessonTab, moduleName, itemCode, question, answer, now).run();
         }
 
-        // Forward to Central AMS Apps Script
         if (env.AMS_WEBHOOK_URL && tenant.ams_sheet_url) {
           ctx.waitUntil(
             fetch(env.AMS_WEBHOOK_URL, {
@@ -469,26 +573,8 @@ export default {
             return json({ error: 'AMS Webhook or Sheet URL not configured.' }, 400);
           }
 
-          const { results: members } = await env.DB.prepare(
-            `SELECT u.member_number, u.name, u.email, u.status, u.is_paid, u.is_admin,
-                    u.session_count, u.click_count, u.created_at, u.last_seen,
-              (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) as post_count,
-              (SELECT COUNT(*) FROM answers a WHERE a.user_id = u.id AND a.item_code LIKE '%_done' AND a.item_code NOT LIKE 'L%_done' AND a.answer = 'Done') as modules_done,
-              (SELECT COUNT(*) FROM answers a WHERE a.user_id = u.id AND a.item_code LIKE 'L%_done' AND a.answer = 'Done') as lessons_done
-             FROM users u WHERE u.tenant_domain = ? ORDER BY u.member_number ASC`
-          ).bind(domain).all();
-
-          const res = await fetch(env.AMS_WEBHOOK_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'sync_members',
-              sheetUrl: tenant.ams_sheet_url,
-              members: members || []
-            })
-          });
-          if (!res.ok) return json({ error: 'Failed to sync with Google Sheet.' }, 500);
-          return json({ ok: true, message: `Synced ${(members || []).length} members to Google Sheet!` });
+          const members = await syncMembersToAms(env, domain, tenant, true);
+          return json({ ok: true, message: `Synced ${members.length} members to Google Sheet!` });
         }
       }
 
@@ -502,6 +588,30 @@ export default {
 // ============================================================================
 // HELPERS
 // ============================================================================
+
+async function syncMembersToAms(env, domain, tenant, throwOnFail = false) {
+  if (!env.AMS_WEBHOOK_URL || !tenant.ams_sheet_url) return [];
+  const { results: members } = await env.DB.prepare(
+    `SELECT u.member_number, u.name, u.email, u.status, u.is_paid, u.is_admin,
+            u.session_count, u.click_count, u.created_at, u.last_seen,
+      (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) as post_count,
+      (SELECT COUNT(*) FROM answers a WHERE a.user_id = u.id AND a.item_code LIKE '%_done' AND a.item_code NOT LIKE 'L%_done' AND a.answer = 'Done') as modules_done,
+      (SELECT COUNT(*) FROM answers a WHERE a.user_id = u.id AND a.item_code LIKE 'L%_done' AND a.answer = 'Done') as lessons_done
+     FROM users u WHERE u.tenant_domain = ? ORDER BY u.member_number ASC`
+  ).bind(domain).all();
+
+  const res = await fetch(env.AMS_WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'sync_members',
+      sheetUrl: tenant.ams_sheet_url,
+      members: members || []
+    })
+  });
+  if (throwOnFail && !res.ok) throw new Error('Failed to sync with Google Sheet.');
+  return members || [];
+}
 
 async function ensureSchema(db) {
   await db.batch([
