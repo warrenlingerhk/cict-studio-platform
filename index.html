@@ -248,6 +248,91 @@
     .mod-body { display: none; padding: 20px 24px 24px; border-top: 1px solid #eef2f7; background: #fcfdfe; }
     .mod-card.open .mod-body { display: block; }
 
+    /* Module Bottom Complete Bar + Collapse Caret */
+    .mod-footer {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 22px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      color: #fff;
+      gap: 12px;
+    }
+    .mod-card.open .mod-footer { display: flex; }
+    .mod-footer-spacer { width: 34px; flex-shrink: 0; }
+    .mod-complete-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 1rem;
+      cursor: pointer;
+      user-select: none;
+      color: #fff;
+    }
+    .mod-complete-label input {
+      width: 22px;
+      height: 22px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .mod-collapse-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      border: 2px solid rgba(255,255,255,.7);
+      background: rgba(255,255,255,.18);
+      color: #fff;
+      font-size: .9rem;
+      font-weight: 900;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background .15s, transform .15s;
+    }
+    .mod-collapse-btn:hover { background: rgba(255,255,255,.32); transform: translateY(-2px); }
+
+    /* Lesson Complete Card */
+    .lesson-complete-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 22px 26px;
+      box-shadow: 0 6px 18px rgba(0,0,0,.07);
+      margin-top: 20px;
+      border-left: 5px solid var(--accent);
+    }
+    .lesson-complete-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .lesson-complete-row input {
+      width: 24px;
+      height: 24px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .lesson-complete-row input:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+    .lesson-complete-row label {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: var(--primary);
+      cursor: pointer;
+      user-select: none;
+    }
+    .lesson-complete-hint {
+      margin: 8px 0 0 36px;
+      font-size: .92rem;
+      font-weight: 700;
+      color: var(--slate);
+    }
+
     /* Content Blocks */
     .cms-block { margin-bottom: 22px; }
     .cms-block:last-child { margin-bottom: 0; }
@@ -1398,8 +1483,14 @@ async function openLesson(idx) {
     return;
   }
 
-  host.innerHTML = modules.map((mod, mIdx) => {
+  const cleanLesson = String(lesson.id).replace(/^L/i, '');
+
+  const modulesHtml = modules.map((mod, mIdx) => {
     const blocksHtml = mod.items.map((item, bIdx) => renderCmsBlock(item, mIdx, bIdx)).join('');
+    const cleanMod = String(mod.id).replace(/^M/i, '');
+    const modDoneCode = `${cleanLesson}${cleanMod}_done`;
+    const isModDone = SAVED_ANSWERS_MAP['code||' + modDoneCode] === 'Done';
+
     return `
       <div class="mod-card ${mIdx === 0 ? 'open' : ''}" id="mod-card-${mIdx}">
         <div class="mod-head" onclick="toggleModule(${mIdx})">
@@ -1409,8 +1500,135 @@ async function openLesson(idx) {
         <div class="mod-body">
           ${blocksHtml}
         </div>
+        <div class="mod-footer">
+          <div class="mod-footer-spacer"></div>
+          <label class="mod-complete-label">
+            <input type="checkbox" class="mod-complete-check" id="mod-done-${mIdx}"
+                   ${isModDone ? 'checked' : ''}
+                   onchange="toggleModuleComplete(${mIdx}, '${escapeHtml(mod.id)}', this)">
+            <span>Mark Module ${escapeHtml(mod.id)} as Complete</span>
+          </label>
+          <button type="button" class="mod-collapse-btn" onclick="collapseModuleFromBottom(${mIdx})" title="Collapse Module">&#9650;</button>
+        </div>
       </div>`;
   }).join('');
+
+  const lessonDoneCode = `L${cleanLesson}_done`;
+  const isLessonDone = SAVED_ANSWERS_MAP['code||' + lessonDoneCode] === 'Done';
+
+  const lessonCompleteHtml = `
+    <div class="lesson-complete-card">
+      <div class="lesson-complete-row">
+        <input type="checkbox" id="lesson-complete-check" ${isLessonDone ? 'checked' : ''} onchange="toggleLessonComplete(this)">
+        <label for="lesson-complete-check">Mark Lesson ${escapeHtml(lesson.id)} as Complete</label>
+      </div>
+      <p class="lesson-complete-hint" id="lesson-complete-hint"></p>
+    </div>
+  `;
+
+  host.innerHTML = modulesHtml + lessonCompleteHtml;
+  updateLessonCompleteState();
+}
+
+function collapseModuleFromBottom(mIdx) {
+  const card = document.getElementById('mod-card-' + mIdx);
+  if (card) card.classList.remove('open');
+
+  const nextCard = document.getElementById('mod-card-' + (mIdx + 1));
+  const target = nextCard || card;
+  if (target) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+function updateLessonCompleteState() {
+  const lessonCheck = document.getElementById('lesson-complete-check');
+  const hint = document.getElementById('lesson-complete-hint');
+  if (!lessonCheck || !hint) return;
+
+  const modChecks = Array.from(document.querySelectorAll('.mod-complete-check'));
+  const uncheckedCount = modChecks.filter(c => !c.checked).length;
+  const allDone = uncheckedCount === 0;
+
+  lessonCheck.disabled = !allDone && !lessonCheck.checked;
+
+  if (lessonCheck.checked) {
+    hint.innerText = 'Lesson marked complete. Great work!';
+    hint.style.color = 'var(--green)';
+  } else if (allDone) {
+    hint.innerText = 'All modules complete — you can mark this lesson complete.';
+    hint.style.color = 'var(--primary)';
+  } else {
+    hint.innerText = `Complete ${uncheckedCount} more module${uncheckedCount > 1 ? 's' : ''} to unlock this box.`;
+    hint.style.color = 'var(--slate)';
+  }
+}
+
+async function toggleModuleComplete(mIdx, modId, checkbox) {
+  updateLessonCompleteState();
+
+  const cleanLesson = CURRENT_LESSON ? String(CURRENT_LESSON.id).replace(/^L/i, '') : '1';
+  const cleanMod = String(modId).replace(/^M/i, '');
+  const itemCode = `${cleanLesson}${cleanMod}_done`;
+  const lessonTab = 'L' + cleanLesson;
+  const lessonTitle = CURRENT_LESSON ? CURRENT_LESSON.name : '';
+  const modCard = document.getElementById('mod-card-' + mIdx);
+  const modTitle = modCard ? modCard.querySelector('.mod-title').innerText : ('Module ' + modId);
+  const answerVal = checkbox.checked ? 'Done' : '';
+
+  SAVED_ANSWERS_MAP['code||' + itemCode] = answerVal;
+
+  try {
+    await fetch('/api/answers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + localStorage.getItem('token')
+      },
+      body: JSON.stringify({
+        lesson_tab: lessonTab,
+        module: modTitle,
+        lesson: lessonTitle,
+        item_code: itemCode,
+        title: `Module ${modId} Complete`,
+        is_paid_item: false,
+        question: `Module ${modId} Complete`,
+        answer: answerVal
+      })
+    });
+  } catch (err) {}
+}
+
+async function toggleLessonComplete(checkbox) {
+  updateLessonCompleteState();
+
+  const cleanLesson = CURRENT_LESSON ? String(CURRENT_LESSON.id).replace(/^L/i, '') : '1';
+  const itemCode = `L${cleanLesson}_done`;
+  const lessonTab = 'L' + cleanLesson;
+  const lessonTitle = CURRENT_LESSON ? CURRENT_LESSON.name : '';
+  const answerVal = checkbox.checked ? 'Done' : '';
+
+  SAVED_ANSWERS_MAP['code||' + itemCode] = answerVal;
+
+  try {
+    await fetch('/api/answers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + localStorage.getItem('token')
+      },
+      body: JSON.stringify({
+        lesson_tab: lessonTab,
+        module: 'Lesson Complete',
+        lesson: lessonTitle,
+        item_code: itemCode,
+        title: `Lesson ${CURRENT_LESSON ? CURRENT_LESSON.id : cleanLesson} Complete`,
+        is_paid_item: false,
+        question: `Lesson ${CURRENT_LESSON ? CURRENT_LESSON.id : cleanLesson} Complete`,
+        answer: answerVal
+      })
+    });
+  } catch (err) {}
 }
 
 function renderCmsBlock(item, mIdx, bIdx) {
