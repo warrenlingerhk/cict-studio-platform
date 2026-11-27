@@ -1,0 +1,296 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="page-title">Fast-Action Offer</title>
+  <link id="dynamic-favicon" rel="icon" href="">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0B2545;
+      --accent: #D4AF37;
+      --bg: #F8F9FA;
+      --slate: #64748B;
+      --green: #16A34A;
+      --red: #DC2626;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Nunito Sans', sans-serif;
+      background: var(--bg);
+      color: var(--primary);
+      line-height: 1.55;
+      opacity: 0;
+      transition: opacity 0.15s ease-in;
+    }
+    body.ready { opacity: 1; }
+    h1, h2, h3, .brand { font-family: 'Poppins', sans-serif; }
+
+    .topbar {
+      background: #FFFFFF;
+      border-bottom: 3px solid var(--primary);
+      padding: 14px 0;
+    }
+    .wrap { width: min(820px, 92%); margin-inline: auto; }
+    .topbar-in { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.2rem; color: var(--primary); text-decoration: none; }
+    .brand img { height: 38px; width: auto; object-fit: contain; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      border-radius: 999px; font-weight: 800; padding: 10px 22px; text-decoration: none;
+      border: 2px solid var(--primary); color: var(--primary); background: #FFFFFF; cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn.cta {
+      background: var(--accent); border-color: var(--accent); color: #FFFFFF;
+      font-size: 1.12rem; padding: 16px 32px; width: 100%;
+      box-shadow: 0 6px 0 rgba(0,0,0,0.16);
+    }
+
+    .offer-card {
+      background: #FFFFFF;
+      border-radius: 22px;
+      box-shadow: 0 12px 34px rgba(0,0,0,0.09);
+      margin: 34px 0 60px;
+      overflow: hidden;
+      border-top: 6px solid var(--accent);
+    }
+    .timer-banner {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      color: #FFFFFF;
+      padding: 18px 24px;
+      text-align: center;
+    }
+    .timer-label {
+      font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.92;
+    }
+    .timer-clock {
+      font-family: 'Poppins', sans-serif;
+      font-size: clamp(1.8rem, 4vw, 2.5rem);
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      margin-top: 2px;
+    }
+    .offer-body { padding: 34px 32px 38px; }
+    .offer-title { font-size: clamp(1.55rem, 3.5vw, 2.25rem); font-weight: 800; line-height: 1.2; margin-bottom: 10px; }
+    .offer-sub { font-size: 1.08rem; font-weight: 700; color: var(--slate); margin-bottom: 22px; }
+
+    .deliverables {
+      background: #F8FAFC;
+      border: 1.5px solid #E2E8F0;
+      border-radius: 14px;
+      padding: 20px 24px;
+      margin-bottom: 26px;
+    }
+    .deliverables h3 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--slate); margin-bottom: 12px; }
+    .deliverables ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .deliverables li { font-size: 1.02rem; font-weight: 700; padding-left: 26px; position: relative; }
+    .deliverables li::before { content: '✓'; position: absolute; left: 0; color: var(--green); font-weight: 900; }
+
+    .price-box {
+      text-align: center;
+      padding: 22px;
+      border-radius: 16px;
+      background: #FFFDF5;
+      border: 2px solid var(--accent);
+      margin-bottom: 18px;
+    }
+    .price-tag { font-family: 'Poppins', sans-serif; font-size: 2rem; font-weight: 800; color: var(--primary); }
+    .price-strike { text-decoration: line-through; color: var(--slate); font-size: 1.15rem; margin-right: 10px; font-weight: 700; }
+    .support-note { text-align: center; font-size: 0.88rem; color: var(--slate); margin-top: 16px; }
+  </style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="wrap topbar-in">
+      <a href="/" class="brand">
+        <img id="hdr-logo" src="" alt="" style="display:none;">
+        <span id="hdr-name">Portal</span>
+      </a>
+      <a href="/" class="btn" style="padding:7px 16px; font-size:0.88rem;">← Enter Free Portal</a>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="offer-card" id="offer-card">
+      <div class="timer-banner" id="timer-banner" style="display:none;">
+        <div class="timer-label" id="timer-label">Fast-Action Window Closes In</div>
+        <div class="timer-clock" id="timer-clock">--:--</div>
+      </div>
+
+      <div class="offer-body">
+        <h1 class="offer-title" id="offer-title">Loading Offer...</h1>
+        <p class="offer-sub" id="offer-subtitle"></p>
+
+        <div class="deliverables" id="deliverables-box" style="display:none;">
+          <h3>Everything Unlocked Instantly:</h3>
+          <ul id="deliverables-list"></ul>
+        </div>
+
+        <div class="price-box">
+          <div id="price-display" class="price-tag"></div>
+          <div id="price-note" style="font-size:0.9rem; font-weight:700; color:var(--slate); margin-top:4px;"></div>
+        </div>
+
+        <a id="checkout-btn" href="/" target="_blank" rel="noopener noreferrer" class="btn cta">Unlock Now →</a>
+        <p class="support-note" id="support-note"></p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function resolveDriveImage(url) {
+      const raw = String(url || '').trim();
+      if (!raw) return '';
+      const match = raw.match(/\/d\/([a-zA-Z0-9_-]+)/) || raw.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      return match && match[1] ? `https://lh3.googleusercontent.com/d/${match[1]}` : raw;
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    async function initOffer() {
+      const params = new URLSearchParams(window.location.search);
+      const slot = params.get('slot') === '2' ? '2' : '1';
+
+      const cfgRes = await fetch('/api/config');
+      const cfg = await cfgRes.json();
+      const s = cfg.settings || {};
+
+      if (s.primary_color) document.documentElement.style.setProperty('--primary', s.primary_color);
+      if (s.accent_color) document.documentElement.style.setProperty('--accent', s.accent_color);
+      if (s.bg_color) document.documentElement.style.setProperty('--bg', s.bg_color);
+      if (s.site_name) document.getElementById('hdr-name').textContent = s.site_name;
+      if (s.logo_url) {
+        const img = document.getElementById('hdr-logo');
+        img.src = resolveDriveImage(s.logo_url);
+        img.style.display = 'block';
+      }
+      if (s.favicon_url) document.getElementById('dynamic-favicon').href = resolveDriveImage(s.favicon_url);
+      if (s.support_email) {
+        document.getElementById('support-note').textContent = `Questions? Reach us anytime at ${s.support_email}`;
+      }
+
+      const enabled = s[`offer_${slot}_enabled`] === '1';
+      const title = s[`offer_${slot}_title`] || 'Special Member Upgrade';
+      const subtitle = s[`offer_${slot}_subtitle`] || '';
+      const bulletsRaw = s[`offer_${slot}_bullets`] || '';
+      const timerMins = Math.max(0, parseInt(s[`offer_${slot}_timer_mins`], 10) || 0);
+      const fastPrice = s[`offer_${slot}_fast_price`] || '';
+      const fastUrl = s[`offer_${slot}_fast_url`] || '/';
+      const regPrice = s[`offer_${slot}_reg_price`] || fastPrice;
+      const regUrl = s[`offer_${slot}_reg_url`] || fastUrl;
+
+      document.getElementById('page-title').textContent = `${title} — ${s.site_name || 'Portal'}`;
+      document.getElementById('offer-title').textContent = title;
+      document.getElementById('offer-subtitle').textContent = subtitle;
+
+      if (!enabled) {
+        document.getElementById('offer-title').textContent = 'This Offer Is Currently Closed';
+        document.getElementById('offer-subtitle').textContent = 'Return to the main portal to access your free lessons and resources.';
+        document.querySelector('.price-box').style.display = 'none';
+        const btn = document.getElementById('checkout-btn');
+        btn.textContent = 'Return to Portal →';
+        btn.href = '/';
+        btn.removeAttribute('target');
+        document.body.classList.add('ready');
+        return;
+      }
+
+      const bullets = bulletsRaw.split('|').map(b => b.trim()).filter(Boolean);
+      if (bullets.length > 0) {
+        document.getElementById('deliverables-box').style.display = 'block';
+        document.getElementById('deliverables-list').innerHTML = bullets.map(b => `<li>${escapeHtml(b)}</li>`).join('');
+      }
+
+      // Determine anchor timestamp: real D1 created_at if logged in, otherwise persistent localStorage start
+      let anchorMs = 0;
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const meRes = await fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + token } });
+          const me = await meRes.json();
+          if (me.authenticated && me.created_at) {
+            anchorMs = Date.parse(me.created_at);
+          }
+        } catch (_) {}
+      }
+
+      if (!anchorMs) {
+        const storageKey = `offer_start_${window.location.host}_slot_${slot}`;
+        const saved = localStorage.getItem(storageKey);
+        if (saved && !isNaN(Number(saved))) {
+          anchorMs = Number(saved);
+        } else {
+          anchorMs = Date.now();
+          localStorage.setItem(storageKey, String(anchorMs));
+        }
+      }
+
+      const btn = document.getElementById('checkout-btn');
+      const priceEl = document.getElementById('price-display');
+      const noteEl = document.getElementById('price-note');
+
+      function applyActiveState() {
+        priceEl.innerHTML = regPrice && regPrice !== fastPrice
+          ? `<span class="price-strike">${escapeHtml(regPrice)}</span>${escapeHtml(fastPrice)}`
+          : escapeHtml(fastPrice || regPrice);
+        noteEl.textContent = timerMins > 0 ? 'Fast-Action Discount Active' : 'Instant Access';
+        btn.textContent = `Claim Instant Access${fastPrice ? ' — ' + fastPrice : ''} →`;
+        btn.href = fastUrl || regUrl || '/';
+      }
+
+      function applyExpiredState() {
+        priceEl.textContent = regPrice || fastPrice || 'Standard Enrollment';
+        noteEl.textContent = 'Fast-action window has ended — standard pricing now applies.';
+        btn.textContent = `Enroll Now${regPrice ? ' — ' + regPrice : ''} →`;
+        btn.href = regUrl || fastUrl || '/';
+      }
+
+      if (timerMins <= 0) {
+        applyActiveState();
+        document.body.classList.add('ready');
+        return;
+      }
+
+      const deadlineMs = anchorMs + timerMins * 60 * 1000;
+      const banner = document.getElementById('timer-banner');
+      const clock = document.getElementById('timer-clock');
+      const label = document.getElementById('timer-label');
+      banner.style.display = 'block';
+
+      function tick() {
+        const remaining = deadlineMs - Date.now();
+        if (remaining <= 0) {
+          label.textContent = 'Fast-Action Window Expired';
+          clock.textContent = '00:00';
+          applyExpiredState();
+          return;
+        }
+        const totalSecs = Math.floor(remaining / 1000);
+        const hrs = Math.floor(totalSecs / 3600);
+        const mins = Math.floor((totalSecs % 3600) / 60);
+        const secs = totalSecs % 60;
+        clock.textContent = hrs > 0
+          ? `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+          : `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        applyActiveState();
+      }
+
+      tick();
+      setInterval(tick, 1000);
+      document.body.classList.add('ready');
+    }
+
+    initOffer();
+  </script>
+</body>
+</html>
