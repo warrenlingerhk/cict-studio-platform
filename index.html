@@ -347,6 +347,37 @@
     ul.cms-list { list-style-type: disc; }
     ol.cms-list { list-style-type: decimal; }
 
+    /* Lesson Countdown Offer / Expiring Download Card */
+    .countdown-card {
+      background: #FFFDF5;
+      border: 2px solid var(--accent);
+      border-radius: 14px;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .countdown-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .countdown-pill {
+      background: var(--primary);
+      color: #FFFFFF;
+      font-family: 'Poppins', sans-serif;
+      font-weight: 800;
+      font-size: 0.92rem;
+      padding: 5px 14px;
+      border-radius: 999px;
+      letter-spacing: 0.03em;
+    }
+    .countdown-pill.expired {
+      background: var(--slate);
+    }
+
     /* Expandable Block */
     .exp-box { border: 2px solid #e1e8f0; border-radius: 12px; background: #fff; overflow: hidden; }
     .exp-head { padding: 13px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; cursor: pointer; font-weight: 800; color: var(--primary); background: #f8fafc; }
@@ -665,6 +696,8 @@ let LESSONS = [];
 let CURRENT_LESSON = null;
 let CURRENT_BLOCK_ITEMS = {};
 let SAVED_ANSWERS_MAP = {};
+let USER_CREATED_AT_MS = 0;
+let LESSON_COUNTDOWN_INTERVAL = null;
 
 // Calendar State
 let ALL_EVENTS = [];
@@ -777,6 +810,10 @@ async function applySettings() {
 }
 
 function hideViews() {
+  if (LESSON_COUNTDOWN_INTERVAL) {
+    clearInterval(LESSON_COUNTDOWN_INTERVAL);
+    LESSON_COUNTDOWN_INTERVAL = null;
+  }
   ['view-home', 'view-lesson', 'view-auth-signup', 'view-auth-login', 'view-auth-forgot'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add('hidden');
@@ -802,6 +839,7 @@ function showAuth(type) {
 
 function logout() {
   localStorage.clear();
+  USER_CREATED_AT_MS = 0;
   showHome();
 }
 
@@ -1319,7 +1357,7 @@ function formatNiceTime(timeStr) {
 }
 
 // ============================================================================
-// CMS PARSER (11-Column Schema + Stable Item Codes like '118')
+// CMS PARSER (11-Column Schema + Countdown Block Support)
 // ============================================================================
 
 async function renderLessons() {
@@ -1419,18 +1457,27 @@ async function loadUserSavedAnswers() {
   const token = localStorage.getItem('token');
   if (!token) return;
   try {
-    const res = await fetch('/api/my-answers', {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    SAVED_ANSWERS_MAP = {};
-    for (const row of data.answers || []) {
-      if (row.item_code) {
-        SAVED_ANSWERS_MAP['code||' + row.item_code] = row.answer;
+    const [ansRes, meRes] = await Promise.all([
+      fetch('/api/my-answers', { headers: { 'Authorization': 'Bearer ' + token } }),
+      fetch('/api/me', { headers: { 'Authorization': 'Bearer ' + token } })
+    ]);
+    if (meRes.ok) {
+      const me = await meRes.json();
+      if (me.authenticated && me.created_at) {
+        USER_CREATED_AT_MS = Date.parse(me.created_at);
+        localStorage.setItem('user_created_at', me.created_at);
       }
-      const key = `${row.lesson_tab}||${row.module}||${row.question}`;
-      SAVED_ANSWERS_MAP[key] = row.answer;
+    }
+    if (ansRes.ok) {
+      const data = await ansRes.json();
+      SAVED_ANSWERS_MAP = {};
+      for (const row of data.answers || []) {
+        if (row.item_code) {
+          SAVED_ANSWERS_MAP['code||' + row.item_code] = row.answer;
+        }
+        const key = `${row.lesson_tab}||${row.module}||${row.question}`;
+        SAVED_ANSWERS_MAP[key] = row.answer;
+      }
     }
   } catch (e) {}
 }
@@ -1532,6 +1579,67 @@ async function openLesson(idx) {
 
   host.innerHTML = modulesHtml + lessonCompleteHtml;
   updateLessonCompleteState();
+  startLessonCountdowns();
+}
+
+function startLessonCountdowns() {
+  if (LESSON_COUNTDOWN_INTERVAL) clearInterval(LESSON_COUNTDOWN_INTERVAL);
+
+  const tickAll = () => {
+    const boxes = document.querySelectorAll('.js-lesson-countdown');
+    if (boxes.length === 0) return;
+
+    const anchorMs = USER_CREATED_AT_MS
+      || (localStorage.getItem('user_created_at') ? Date.parse(localStorage.getItem('user_created_at')) : Date.now());
+
+    boxes.forEach(box => {
+      const spec = (box.getAttribute('data-deadline') || '').trim();
+      const activeUrl = box.getAttribute('data-active-url') || '';
+      const expiredUrl = box.getAttribute('data-expired-url') || '';
+      const activeLabel = box.getAttribute('data-active-label') || 'Claim Offer';
+      const pill = box.querySelector('.countdown-pill');
+      const btn = box.querySelector('.js-cd-btn');
+
+      let deadlineMs = 0;
+      if (/^\d+$/.test(spec)) {
+        deadlineMs = anchorMs + parseInt(spec, 10) * 60 * 1000;
+      } else {
+        deadlineMs = Date.parse(spec);
+      }
+
+      if (!deadlineMs || isNaN(deadlineMs)) {
+        pill.textContent = 'Limited Time';
+        return;
+      }
+
+      const remaining = deadlineMs - Date.now();
+      if (remaining <= 0) {
+        pill.textContent = 'Offer / Window Closed';
+        pill.classList.add('expired');
+        if (expiredUrl) {
+          btn.href = expiredUrl;
+          btn.textContent = 'Standard Access →';
+          btn.classList.remove('hidden');
+        } else {
+          btn.classList.add('hidden');
+        }
+      } else {
+        const totalSecs = Math.floor(remaining / 1000);
+        const days = Math.floor(totalSecs / 86400);
+        const hrs = Math.floor((totalSecs % 86400) / 3600);
+        const mins = Math.floor((totalSecs % 3600) / 60);
+        const secs = totalSecs % 60;
+        pill.textContent = days > 0
+          ? `Ends in ${days}d ${String(hrs).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m`
+          : `Ends in ${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        btn.href = activeUrl;
+        btn.textContent = activeLabel + ' ↗';
+      }
+    });
+  };
+
+  tickAll();
+  LESSON_COUNTDOWN_INTERVAL = setInterval(tickAll, 1000);
 }
 
 function collapseModuleFromBottom(mIdx) {
@@ -1668,6 +1776,36 @@ function renderCmsBlock(item, mIdx, bIdx) {
       <div class="cms-block">
         ${headingHtml}
         <${tag} class="cms-list">${parts.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</${tag}>
+      </div>`;
+  }
+
+  if (item.type === 'countdown') {
+    // extra1 = "Button Label | Active URL | Optional Expired URL"
+    // extra2 = Minutes from member enrollment (e.g. "60") OR ISO deadline date (e.g. "2026-12-15 23:59")
+    const parts = item.extra1.split('|').map(s => s.trim());
+    const btnLabel = parts[0] || 'Unlock Fast-Action Access';
+    const activeUrl = parts[1] || '';
+    const expiredUrl = parts[2] || '';
+
+    return `
+      <div class="cms-block">
+        ${isLocked ? `
+          ${headingHtml}
+          <div class="locked-notice">Paid Members Only — Upgrade your membership to access this timed offer.</div>
+        ` : `
+          <div class="countdown-card js-lesson-countdown"
+               data-deadline="${escapeHtml(item.extra2 || '60')}"
+               data-active-url="${escapeHtml(activeUrl)}"
+               data-expired-url="${escapeHtml(expiredUrl)}"
+               data-active-label="${escapeHtml(btnLabel)}">
+            <div class="countdown-top">
+              <h4 class="cms-title" style="margin:0;">${escapeHtml(item.title || 'Limited-Time Offer')}</h4>
+              <span class="countdown-pill">--:--</span>
+            </div>
+            ${item.content ? `<div class="cms-text">${escapeHtml(item.content)}</div>` : ''}
+            ${activeUrl ? `<div><a class="btn cta small js-cd-btn" href="${escapeHtml(activeUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(btnLabel)} &#8599;</a></div>` : ''}
+          </div>
+        `}
       </div>`;
   }
 
@@ -1973,6 +2111,7 @@ async function login() {
       localStorage.setItem('user_status', data.status || 'Approved');
       localStorage.setItem('is_admin', data.is_admin ? '1' : '0');
       localStorage.setItem('is_paid', data.is_paid ? '1' : '0');
+      if (data.created_at) localStorage.setItem('user_created_at', data.created_at);
       showHome();
     } else {
       errEl.innerText = data.error || 'Login failed.';
@@ -2009,6 +2148,7 @@ async function signup() {
       localStorage.setItem('user_status', data.status || 'Pending');
       localStorage.setItem('is_admin', data.is_admin ? '1' : '0');
       localStorage.setItem('is_paid', data.is_paid ? '1' : '0');
+      if (data.created_at) localStorage.setItem('user_created_at', data.created_at);
       showHome();
     } else {
       errEl.innerText = data.error || 'Sign-up failed.';
