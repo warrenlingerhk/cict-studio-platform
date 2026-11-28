@@ -1,35 +1,334 @@
 
 
+
+
 // ============================================================================
-// MULTI-TENANT SAAS WORKER (worker.js)
-// Cloudflare Workers + D1 + Google Sheets CMS/AMS
+// MULTI-TENANT SAAS CLOUDFLARE WORKER (worker.js)
+// Routes requests by hostname via Master Tenants Sheet & binds D1 dynamically
+// Includes POST /api/auto-enroll (supports per-tenant slot secrets)
+// Includes GET /api/me (returns real D1 created_at for server-verified timers)
+// Supports 2 configurable Offer Funnel Slots per tenant in D1 settings
 // ============================================================================
 
 const MASTER_CSV_URL =
   'https://docs.google.com/spreadsheets/d/e/2PACX-1vTgotv2zBG-2uYmMPtCyXUP1z6TtgJ1Cg6WxocccVq29lbixrkiGvpkVawVtxz-_-I-OZHIJNHN58el/pub?gid=0&single=true&output=csv';
 
+const AUTO_ENROLL_SECRET = 'legacycp-studio-enroll-2026';
+
+let tenantCache = { data: null, expiresAt: 0 };
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let token = '';
+  let insideQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    const next = text[i + 1];
+
+    if (c === '"') {
+      if (insideQuotes && next === '"') {
+        token += '"';
+        i++;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+    } else if (c === ',' && !insideQuotes) {
+      row.push(token);
+      token = '';
+    } else if ((c === '\r' || c === '\n') && !insideQuotes) {
+      if (c === '\r' && next === '\n') i++;
+      row.push(token);
+      token = '';
+      if (row.length > 0 && row.some((cell) => cell.trim() !== '')) {
+        rows.push(row);
+      }
+      row = [];
+    } else {
+      token += c;
+    }
+  }
+  if (token !== '' || row.length > 0) {
+    row.push(token);
+    if (row.some((cell) => cell.trim() !== '')) {
+      rows.push(row);
+    }
+  }
+  return rows;
+}
+
+function extractSheetId(urlOrId) {
+  const raw = String(urlOrId || '').trim();
+  const match = raw.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : raw;
+}
+
+async function getTenantConfig(hostname, env) {
+  const now = Date.now();
+  if (!tenantCache.data || now > tenantCache.expiresAt) {
+    try {
+      const res = await fetch(MASTER_CSV_URL, { cf: { cacheTtl: 30 } });
+      if (!res.ok) throw new Error('Failed to fetch Master Tenants Sheet (' + res.status + ')');
+      const csvText = await res.text();
+      const rows = parseCSV(csvText);
+
+      const tenants = {};
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || r.length < 2) continue;
+        const domain = (r[0] || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+        if (!domain) continue;
+
+        tenants[domain] = {
+          domain,
+          db_binding: (r[1] || 'DB').trim(),
+          apps_script_url: (env.AMS_WEBHOOK_URL || '').trim(),
+          ams_sheet_url: (r[2] || '').trim(),
+          cms_sheet_url: (r[4] || '').trim(),
+          cms_csv_url: (r[5] || '').trim(),
+          settings: {
+            site_name: (r[6] || '').trim(),
+            tagline: (r[7] || '').trim(),
+            hero_title: (r[8] || '').trim(),
+            hero_points: (r[9] || '').trim(),
+            logo_url: (r[10] || '').trim(),
+            favicon_url: (r[11] || '').trim(),
+            primary_color: (r[12] || '').trim(),
+            accent_color: (r[13] || '').trim(),
+            bg_color: (r[14] || '').trim(),
+            support_email: (r[15] || '').trim(),
+          },
+        };
+      }
+      if (Object.keys(tenants).length > 0) {
+        tenantCache = { data: tenants, expiresAt: now + 60 * 1000 };
+      }
+    } catch (err) {
+      if (!tenantCache.data) throw err;
+    }
+  }
+
+  const cleanHost = hostname.toLowerCase().replace(/^www\./, '');
+  if (tenantCache.data[cleanHost]) return tenantCache.data[cleanHost];
+
+  if (cleanHost.startsWith('aethera.') && env.aethera) {
+    const matchKey = Object.keys(tenantCache.data).find((k) => k.includes('aethera'));
+    if (matchKey) return tenantCache.data[matchKey];
+  }
+
+  const firstKey = Object.keys(tenantCache.data)[0];
+  return tenantCache.data[firstKey] || null;
+}
+
+function jsonResponse(obj, status = 200) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
+
+async function ensureSchema(db) {
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT,
+        updated_at TEXT DEFAULT (datetime('now'))
+      )`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS answers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        member_number TEXT,
+        user_name TEXT,
+        user_email TEXT,
+        lesson_tab TEXT,
+        module TEXT,
+        lesson TEXT,
+        item_code TEXT DEFAULT '',
+        title TEXT DEFAULT '',
+        is_paid_item INTEGER DEFAULT 0,
+        question TEXT,
+        answer TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+      )`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS poll_votes (
+        user_id INTEGER,
+        poll_key TEXT,
+        choices TEXT,
+        updated_at TEXT DEFAULT (datetime('now')),
+        PRIMARY KEY (user_id, poll_key)
+      )`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        event_date TEXT NOT NULL,
+        start_time TEXT NOT NULL,
+        duration_mins INTEGER DEFAULT 60,
+        timezone TEXT DEFAULT 'Asia/Hong_Kong',
+        recurring TEXT DEFAULT 'none',
+        location_type TEXT DEFAULT 'Zoom',
+        location_url TEXT DEFAULT '',
+        description TEXT DEFAULT '',
+        cover_url TEXT DEFAULT '',
+        access_level TEXT DEFAULT 'all',
+        created_at TEXT DEFAULT (datetime('now'))
+      )`
+    )
+    .run();
+
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS event_rsvps (
+        event_id INTEGER,
+        user_id INTEGER,
+        user_email TEXT,
+        user_name TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        PRIMARY KEY (event_id, user_email)
+      )`
+    )
+    .run();
+
+  const alters = [
+    'ALTER TABLE users ADD COLUMN member_number TEXT',
+    "ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'Pending'",
+    'ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0',
+    'ALTER TABLE users ADD COLUMN is_paid INTEGER DEFAULT 0',
+    'ALTER TABLE users ADD COLUMN google_verified INTEGER DEFAULT 0',
+    'ALTER TABLE users ADD COLUMN auth_token TEXT',
+    'ALTER TABLE users ADD COLUMN session_count INTEGER DEFAULT 0',
+    'ALTER TABLE users ADD COLUMN click_count INTEGER DEFAULT 0',
+    'ALTER TABLE users ADD COLUMN last_active_at TEXT',
+    'ALTER TABLE users ADD COLUMN last_seen TEXT',
+    'ALTER TABLE answers ADD COLUMN member_number TEXT',
+    'ALTER TABLE answers ADD COLUMN user_name TEXT',
+    'ALTER TABLE answers ADD COLUMN user_email TEXT',
+    'ALTER TABLE answers ADD COLUMN lesson_tab TEXT',
+    'ALTER TABLE answers ADD COLUMN module TEXT',
+    'ALTER TABLE answers ADD COLUMN lesson TEXT',
+    "ALTER TABLE answers ADD COLUMN item_code TEXT DEFAULT ''",
+    "ALTER TABLE answers ADD COLUMN title TEXT DEFAULT ''",
+    'ALTER TABLE answers ADD COLUMN is_paid_item INTEGER DEFAULT 0',
+  ];
+  for (const sql of alters) {
+    try {
+      await db.prepare(sql).run();
+    } catch (_) {}
+  }
+}
+
+async function getAuthUser(request, db) {
+  const auth = request.headers.get('Authorization') || '';
+  const token = auth.replace(/^Bearer\s+/i, '').trim();
+  if (!token) return null;
+  return await db.prepare('SELECT * FROM users WHERE auth_token = ?').bind(token).first();
+}
+
+function generateToken() {
+  return crypto.randomUUID() + '-' + crypto.randomUUID();
+}
+
+function extractPollCounts(rows) {
+  const counts = {};
+  let totalVoters = 0;
+  for (const row of rows) {
+    let arr = [];
+    try {
+      arr = JSON.parse(row.choices || '[]');
+    } catch (_) {
+      arr = row.choices ? [row.choices] : [];
+    }
+    if (Array.isArray(arr) && arr.length > 0) {
+      totalVoters++;
+      for (const opt of arr) {
+        counts[opt] = (counts[opt] || 0) + 1;
+      }
+    }
+  }
+  return { counts, totalVoters };
+}
+
+async function triggerAmsMemberSync(db, tenant) {
+  if (!tenant.apps_script_url || !tenant.ams_sheet_url) return;
+  const usersRes = await db
+    .prepare(
+      `SELECT u.member_number, u.name, u.email, u.status, u.is_paid, u.is_admin,
+        u.session_count, u.click_count, u.created_at, u.last_seen,
+        (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) AS post_count,
+        (SELECT COUNT(DISTINCT lesson_tab) FROM answers a WHERE a.user_id = u.id) AS lessons_done,
+        (SELECT COUNT(DISTINCT module) FROM answers a WHERE a.user_id = u.id AND a.module != '') AS modules_done
+       FROM users u
+       ORDER BY CAST(u.member_number AS INTEGER) ASC, u.id ASC`
+    )
+    .all();
+
+  await fetch(tenant.apps_script_url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'sync_members',
+      sheetUrl: tenant.ams_sheet_url,
+      sheetId: extractSheetId(tenant.ams_sheet_url),
+      members: usersRes.results || [],
+    }),
+  }).catch(() => {});
+}
+
 export default {
   async fetch(request, env, ctx) {
+    if (request.method === 'OPTIONS') {
+      return jsonResponse({ ok: true }, 204);
+    }
+
     const url = new URL(request.url);
     const path = url.pathname;
 
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: corsHeaders() });
-    }
-
     if (!path.startsWith('/api/')) {
-      if (env.ASSETS) return env.ASSETS.fetch(request);
-      return new Response('Not Found', { status: 404 });
+      return env.ASSETS.fetch(request);
     }
 
     try {
-      await ensureSchema(env.DB);
-      const domain = url.hostname.toLowerCase();
-      const tenant = await getTenantConfig(domain);
+      const tenant = await getTenantConfig(url.hostname, env);
+      if (!tenant) {
+        return jsonResponse({ error: 'Tenant configuration not found for ' + url.hostname }, 404);
+      }
 
-      // 1. PUBLIC CONFIG
+      const db = env[tenant.db_binding];
+      if (!db) {
+        return jsonResponse({ error: `D1 binding "${tenant.db_binding}" is not configured on Worker.` }, 500);
+      }
+
+      await ensureSchema(db);
+
+      // 1. GET /api/config (Includes Offer Funnel Slot 1 & Slot 2 settings)
       if (path === '/api/config' && request.method === 'GET') {
-        const dbSettings = await getDbSettings(env.DB, domain);
+        const dbRows = await db.prepare('SELECT key, value FROM settings').all();
+        const dbSettings = {};
+        for (const row of dbRows.results || []) {
+          dbSettings[row.key] = row.value;
+        }
+
         const mergedSettings = {
           site_name: dbSettings.site_name || tenant.settings.site_name || 'Platform',
           tagline: dbSettings.tagline || tenant.settings.tagline || '',
@@ -39,9 +338,8 @@ export default {
           favicon_url: dbSettings.favicon_url || tenant.settings.favicon_url || '',
           primary_color: dbSettings.primary_color || tenant.settings.primary_color || '#0B2545',
           accent_color: dbSettings.accent_color || tenant.settings.accent_color || '#D4AF37',
-          bg_color: dbSettings.bg_color || tenant.settings.bg_color || '#FFFFFF',
+          bg_color: dbSettings.bg_color || tenant.settings.bg_color || '#F8F9FA',
           support_email: dbSettings.support_email || tenant.settings.support_email || '',
-          email_signing_name: dbSettings.email_signing_name || tenant.settings.email_signing_name || '',
           // Offer Slot 1
           offer_1_enabled: dbSettings.offer_1_enabled || '0',
           offer_1_title: dbSettings.offer_1_title || '',
@@ -63,631 +361,844 @@ export default {
           offer_2_fast_url: dbSettings.offer_2_fast_url || '',
           offer_2_reg_price: dbSettings.offer_2_reg_price || '',
           offer_2_reg_url: dbSettings.offer_2_reg_url || '',
-          offer_2_secret: dbSettings.offer_2_secret || ''
+          offer_2_secret: dbSettings.offer_2_secret || '',
         };
-        return json({ cms_csv_url: tenant.cms_csv_url, settings: mergedSettings });
-      }
 
-      // 2. AUTH ROUTES
-      if (path === '/api/signup' && request.method === 'POST') {
-        const body = await request.json();
-        const name = String(body.name || '').trim();
-        const email = String(body.email || '').trim().toLowerCase();
-        const password = String(body.password || '');
-
-        if (!name || !email || password.length < 8) {
-          return json({ error: 'Name, email, and 8+ character password required.' }, 400);
-        }
-
-        const existing = await env.DB.prepare(
-          'SELECT id FROM users WHERE tenant_domain = ? AND email = ?'
-        ).bind(domain, email).first();
-        if (existing) return json({ error: 'Email already registered.' }, 400);
-
-        const countRow = await env.DB.prepare(
-          'SELECT COUNT(*) as cnt FROM users WHERE tenant_domain = ?'
-        ).bind(domain).first();
-        const memberNum = (countRow?.cnt || 0) + 1;
-        const isFirst = memberNum === 1;
-        const status = isFirst ? 'Approved' : 'Pending';
-        const isAdmin = isFirst ? 1 : 0;
-        const isPaid = isFirst ? 1 : 0;
-        const hash = await hashPassword(password);
-        const now = new Date().toISOString();
-
-        const res = await env.DB.prepare(
-          `INSERT INTO users (tenant_domain, member_number, name, email, password_hash, status, is_paid, is_admin, session_count, click_count, last_seen, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?)`
-        ).bind(domain, memberNum, name, email, hash, status, isPaid, isAdmin, now, now).run();
-
-        const userId = res.meta.last_row_id;
-        const token = crypto.randomUUID();
-        await env.DB.prepare(
-          'INSERT INTO sessions (token, user_id, tenant_domain, created_at) VALUES (?, ?, ?, ?)'
-        ).bind(token, userId, domain, now).run();
-
-        return json({ token, name, email, member_number: memberNum, status, is_admin: isAdmin, is_paid: isPaid });
-      }
-
-      if (path === '/api/login' && request.method === 'POST') {
-        const body = await request.json();
-        const email = String(body.email || '').trim().toLowerCase();
-        const password = String(body.password || '');
-
-        const user = await env.DB.prepare(
-          'SELECT * FROM users WHERE tenant_domain = ? AND email = ?'
-        ).bind(domain, email).first();
-        if (!user) return json({ error: 'Invalid email or password.' }, 401);
-
-        const hash = await hashPassword(password);
-        if (user.password_hash !== hash) return json({ error: 'Invalid email or password.' }, 401);
-
-        const now = new Date().toISOString();
-        await env.DB.prepare(
-          'UPDATE users SET session_count = session_count + 1, last_seen = ? WHERE id = ?'
-        ).bind(now, user.id).run();
-
-        const token = crypto.randomUUID();
-        await env.DB.prepare(
-          'INSERT INTO sessions (token, user_id, tenant_domain, created_at) VALUES (?, ?, ?, ?)'
-        ).bind(token, user.id, domain, now).run();
-
-        return json({
-          token,
-          name: user.name,
-          email: user.email,
-          member_number: user.member_number,
-          status: user.status,
-          is_admin: user.is_admin,
-          is_paid: user.is_paid
+        return jsonResponse({
+          domain: tenant.domain,
+          db_binding: tenant.db_binding,
+          cms_csv_url: tenant.cms_csv_url,
+          settings: mergedSettings,
         });
       }
 
-      if (path === '/api/forgot-password' && request.method === 'POST') {
-        return json({ ok: true });
+      // 1b. GET /api/me (Returns authenticated member profile + exact created_at timestamp)
+      if (path === '/api/me' && request.method === 'GET') {
+        const user = await getAuthUser(request, db);
+        if (!user) return jsonResponse({ authenticated: false }, 200);
+        return jsonResponse({
+          authenticated: true,
+          id: user.id,
+          member_number: user.member_number || String(user.id),
+          name: user.name,
+          email: user.email,
+          status: user.status || 'Approved',
+          is_paid: Number(user.is_paid) === 1 ? 1 : 0,
+          is_admin: Number(user.is_admin) === 1 || String(user.member_number) === '1' ? 1 : 0,
+          created_at: user.created_at || new Date().toISOString(),
+        });
       }
 
-      // Check auth for routes below (optional for GET /api/events and POST /api/events/enroll)
-      const user = await getAuthUser(request, env.DB, domain);
-
-      if (path === '/api/change-password' && request.method === 'POST') {
-        if (!user) return json({ error: 'Unauthorized' }, 401);
+      // 2. POST /api/signup
+      if (path === '/api/signup' && request.method === 'POST') {
         const body = await request.json();
-        const currentHash = await hashPassword(String(body.currentPassword || ''));
-        if (currentHash !== user.password_hash) {
-          return json({ error: 'Current password is incorrect.' }, 400);
+        const name = (body.name || '').trim();
+        const email = (body.email || '').trim().toLowerCase();
+        const password = (body.password || '').trim();
+
+        if (!name || !email || !password) {
+          return jsonResponse({ error: 'Name, email, and password are required.' }, 400);
         }
 
-        const newName = String(body.newName || '').trim() || user.name;
-        const newPass = String(body.newPassword || '').trim();
-        const nextHash = newPass ? await hashPassword(newPass) : user.password_hash;
+        const existing = await db.prepare('SELECT id FROM users WHERE lower(email) = ?').bind(email).first();
+        if (existing) {
+          return jsonResponse({ error: 'An account with this email already exists.' }, 409);
+        }
 
-        await env.DB.prepare(
-          'UPDATE users SET name = ?, password_hash = ? WHERE id = ?'
-        ).bind(newName, nextHash, user.id).run();
+        const countRow = await db.prepare('SELECT COUNT(*) as cnt FROM users').first();
+        const nextNum = String((countRow?.cnt || 0) + 1);
+        const isFirstUser = nextNum === '1';
+        const status = isFirstUser ? 'Approved' : 'Pending';
+        const isAdmin = isFirstUser ? 1 : 0;
+        const googleVerified = /@(gmail|googlemail)\.com$/i.test(email) ? 1 : 0;
+        const token = generateToken();
+        const nowIso = new Date().toISOString();
 
-        return json({ success: true, name: newName });
+        await db
+          .prepare(
+            `INSERT INTO users (member_number, name, email, password, status, is_admin, is_paid, google_verified, auth_token, session_count, click_count, last_active_at, created_at, last_seen)
+             VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, 1, 0, ?, ?, ?)`
+          )
+          .bind(nextNum, name, email, password, status, isAdmin, googleVerified, token, nowIso, nowIso, nowIso)
+          .run();
+
+        return jsonResponse({
+          token,
+          name,
+          email,
+          member_number: nextNum,
+          status,
+          is_admin: isAdmin,
+          is_paid: 0,
+          created_at: nowIso,
+        });
       }
 
-      // 3. ACTIVITY & HEARTBEAT
-      if (path === '/api/activity' && request.method === 'POST') {
+      // 2b. POST /api/auto-enroll (Supports global secret OR tenant slot 1 / slot 2 secrets)
+      if (path === '/api/auto-enroll' && request.method === 'POST') {
         const body = await request.json().catch(() => ({}));
-        let activeUser = user;
-        if (!activeUser && body.token) {
-          activeUser = await getAuthUserByToken(body.token, env.DB, domain);
+        const providedSecret = String(body.secret || '').trim();
+
+        const validSecrets = new Set();
+        const envSecret = (env.AUTO_ENROLL_SECRET || AUTO_ENROLL_SECRET).trim();
+        if (envSecret) validSecrets.add(envSecret);
+
+        const slotSecretRows = await db
+          .prepare("SELECT value FROM settings WHERE key IN ('offer_1_secret', 'offer_2_secret')")
+          .all();
+        for (const r of slotSecretRows.results || []) {
+          const v = String(r.value || '').trim();
+          if (v) validSecrets.add(v);
         }
-        if (!activeUser) return json({ ok: false }, 401);
 
-        const clicks = Math.max(0, Number(body.clicks) || 0);
-        const now = new Date().toISOString();
-        await env.DB.prepare(
-          'UPDATE users SET click_count = click_count + ?, last_seen = ? WHERE id = ?'
-        ).bind(clicks, now, activeUser.id).run();
-        return json({ ok: true });
-      }
+        if (!providedSecret || !validSecrets.has(providedSecret)) {
+          return jsonResponse({ error: 'Unauthorized enrollment secret.' }, 401);
+        }
 
-      if (path === '/api/heartbeat' && request.method === 'GET') {
-        if (!user) return json({ ok: false }, 401);
-        await env.DB.prepare('UPDATE users SET last_seen = ? WHERE id = ?')
-          .bind(new Date().toISOString(), user.id).run();
-        return json({ ok: true });
-      }
+        const name = String(body.name || '').replace(/\s+/g, ' ').trim();
+        const email = String(body.email || '').trim().toLowerCase();
+        const googleVerified = body.google_verified ? 1 : 0;
 
-      // 4. COMMUNITY POSTS
-      if (path === '/api/posts' && request.method === 'GET') {
-        if (!user) return json([], 401);
-        const { results } = await env.DB.prepare(
-          'SELECT * FROM posts WHERE tenant_domain = ? ORDER BY id DESC LIMIT 100'
-        ).bind(domain).all();
-        return json(results || []);
-      }
+        if (!name || !email) {
+          return jsonResponse({ error: 'Name and email address are required.' }, 400);
+        }
 
-      if (path === '/api/posts' && request.method === 'POST') {
-        if (!user) return json({ error: 'Unauthorized' }, 401);
-        const body = await request.json();
-        const content = String(body.content || '').trim();
-        if (!content) return json({ error: 'Empty post' }, 400);
-
-        await env.DB.prepare(
-          'INSERT INTO posts (tenant_domain, user_id, user_name, content, created_at) VALUES (?, ?, ?, ?, ?)'
-        ).bind(domain, user.id, user.name, content, new Date().toISOString()).run();
-        return json({ ok: true });
-      }
-
-      // 5. ANSWERS & PROGRESS
-      if (path === '/api/my-answers' && request.method === 'GET') {
-        if (!user) return json({ answers: [] }, 401);
-        const { results } = await env.DB.prepare(
-          'SELECT lesson_tab, module, item_code, question, answer FROM answers WHERE tenant_domain = ? AND user_id = ?'
-        ).bind(domain, user.id).all();
-        return json({ answers: results || [] });
-      }
-
-      if (path === '/api/answers' && request.method === 'POST') {
-        if (!user) return json({ error: 'Unauthorized' }, 401);
-        const body = await request.json();
-        const lessonTab = String(body.lesson_tab || 'L1').trim();
-        const moduleName = String(body.module || '').trim();
-        const itemCode = String(body.item_code || '').trim();
-        const question = String(body.question || '').trim();
-        const answer = String(body.answer ?? '');
-        const now = new Date().toISOString();
-
-        // Upsert in D1
-        const existing = await env.DB.prepare(
-          'SELECT id FROM answers WHERE tenant_domain = ? AND user_id = ? AND lesson_tab = ? AND item_code = ?'
-        ).bind(domain, user.id, lessonTab, itemCode).first();
+        const existing = await db.prepare('SELECT * FROM users WHERE lower(email) = ?').bind(email).first();
+        const nowIso = new Date().toISOString();
 
         if (existing) {
-          await env.DB.prepare(
-            'UPDATE answers SET answer = ?, question = ?, module = ?, updated_at = ? WHERE id = ?'
-          ).bind(answer, question, moduleName, now, existing.id).run();
-        } else {
-          await env.DB.prepare(
-            'INSERT INTO answers (tenant_domain, user_id, lesson_tab, module, item_code, question, answer, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-          ).bind(domain, user.id, lessonTab, moduleName, itemCode, question, answer, now).run();
+          await db
+            .prepare("UPDATE users SET name = ?, status = 'Approved', google_verified = MAX(google_verified, ?) WHERE id = ?")
+            .bind(name || existing.name, googleVerified, existing.id)
+            .run();
+
+          ctx.waitUntil(triggerAmsMemberSync(db, tenant));
+
+          return jsonResponse({
+            ok: true,
+            created: false,
+            member_number: existing.member_number || String(existing.id),
+            email,
+            status: 'Approved',
+            is_paid: Number(existing.is_paid) === 1 ? 1 : 0,
+            created_at: existing.created_at || nowIso,
+          });
         }
 
-        // Forward to Central AMS Apps Script
-        if (env.AMS_WEBHOOK_URL && tenant.ams_sheet_url) {
+        const countRow = await db.prepare('SELECT COUNT(*) as cnt FROM users').first();
+        const nextNum = String((countRow?.cnt || 0) + 1);
+        const token = generateToken();
+
+        await db
+          .prepare(
+            `INSERT INTO users (member_number, name, email, password, status, is_admin, is_paid, google_verified, auth_token, session_count, click_count, last_active_at, created_at, last_seen)
+             VALUES (?, ?, ?, ?, 'Approved', 0, 0, ?, ?, 0, 0, ?, ?, ?)`
+          )
+          .bind(nextNum, name, email, email, googleVerified, token, nowIso, nowIso, nowIso)
+          .run();
+
+        ctx.waitUntil(triggerAmsMemberSync(db, tenant));
+
+        return jsonResponse({
+          ok: true,
+          created: true,
+          member_number: nextNum,
+          email,
+          temp_password: email,
+          status: 'Approved',
+          is_paid: 0,
+          created_at: nowIso,
+        });
+      }
+
+      // 3. POST /api/login
+      if (path === '/api/login' && request.method === 'POST') {
+        const body = await request.json();
+        const email = (body.email || '').trim().toLowerCase();
+        const password = (body.password || '').trim();
+
+        const user = await db.prepare('SELECT * FROM users WHERE lower(email) = ?').bind(email).first();
+        const storedPw = (user?.password || user?.password_hash || '').trim();
+        if (!user || (storedPw !== password && (!storedPw || storedPw.length === 0 ? password !== email : false))) {
+          return jsonResponse({ error: 'Invalid email or password.' }, 401);
+        }
+
+        const token = generateToken();
+        const nowIso = new Date().toISOString();
+        const newSessions = (user.session_count || 0) + 1;
+        await db
+          .prepare('UPDATE users SET auth_token = ?, session_count = ?, last_active_at = ?, last_seen = ? WHERE id = ?')
+          .bind(token, newSessions, nowIso, nowIso, user.id)
+          .run();
+
+        const isAdminFlag = Number(user.is_admin) === 1 || String(user.member_number) === '1' ? 1 : 0;
+
+        return jsonResponse({
+          token,
+          name: user.name,
+          email: user.email,
+          member_number: user.member_number || String(user.id),
+          status: user.status || 'Approved',
+          is_admin: isAdminFlag,
+          is_paid: Number(user.is_paid) === 1 ? 1 : 0,
+          created_at: user.created_at || nowIso,
+          google_verified: Number(user.google_verified) === 1 || /@(gmail|googlemail)\.com$/i.test(user.email) ? 1 : 0,
+        });
+      }
+
+      // 4. GET /api/heartbeat
+      if (path === '/api/heartbeat' && request.method === 'GET') {
+        const user = await getAuthUser(request, db);
+        if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+        const nowIso = new Date().toISOString();
+        await db.prepare('UPDATE users SET last_seen = ? WHERE id = ?').bind(nowIso, user.id).run();
+        return jsonResponse({ ok: true });
+      }
+
+      // 4b. POST /api/activity
+      if (path === '/api/activity' && request.method === 'POST') {
+        const body = await request.json().catch(() => ({}));
+        const auth = request.headers.get('Authorization') || '';
+        const token = (auth.replace(/^Bearer\s+/i, '').trim()) || (body.token || '').trim();
+        if (!token) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+        const user = await db.prepare('SELECT * FROM users WHERE auth_token = ?').bind(token).first();
+        if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+        const clicksToAdd = Math.max(0, Math.min(500, parseInt(body.clicks, 10) || 0));
+        const nowMs = Date.now();
+        const nowIso = new Date(nowMs).toISOString();
+        const lastActiveMs = user.last_active_at ? Date.parse(user.last_active_at) : 0;
+        const isNewSession = !lastActiveMs || nowMs - lastActiveMs > 30 * 60 * 1000;
+
+        const updatedSessions = (user.session_count || 0) + (isNewSession ? 1 : 0);
+        const updatedClicks = (user.click_count || 0) + clicksToAdd;
+
+        await db
+          .prepare('UPDATE users SET session_count = ?, click_count = ?, last_active_at = ?, last_seen = ? WHERE id = ?')
+          .bind(updatedSessions, updatedClicks, nowIso, nowIso, user.id)
+          .run();
+
+        return jsonResponse({ ok: true, session_count: updatedSessions, click_count: updatedClicks });
+      }
+
+      // 5. POST /api/change-password
+      if (path === '/api/change-password' && request.method === 'POST') {
+        const user = await getAuthUser(request, db);
+        if (!user) return jsonResponse({ error: 'Session expired. Please log out and log in again.' }, 401);
+
+        const body = await request.json();
+        const currentPassword = (body.currentPassword || '').trim();
+        const storedPw = (user.password || user.password_hash || '').trim();
+        if (storedPw !== currentPassword) {
+          return jsonResponse({ error: 'Current password is incorrect.' }, 400);
+        }
+
+        const newName = (body.newName || '').trim() || user.name;
+        const newPassword = (body.newPassword || '').trim() || storedPw;
+        const requestedEmail = (body.newEmail || '').trim().toLowerCase();
+        const finalEmail = requestedEmail || user.email;
+
+        if (requestedEmail && requestedEmail !== user.email.toLowerCase()) {
+          const dup = await db.prepare('SELECT id FROM users WHERE lower(email) = ? AND id != ?').bind(requestedEmail, user.id).first();
+          if (dup) {
+            return jsonResponse({ error: 'That email address is already linked to another account.' }, 409);
+          }
+        }
+
+        const isGmail = /@(gmail|googlemail)\.com$/i.test(finalEmail) ? 1 : 0;
+
+        await db
+          .prepare('UPDATE users SET name = ?, email = ?, password = ?, google_verified = MAX(google_verified, ?) WHERE id = ?')
+          .bind(newName, finalEmail, newPassword, isGmail, user.id)
+          .run();
+
+        return jsonResponse({
+          success: true,
+          name: newName,
+          email: finalEmail,
+        });
+      }
+
+      // 6. POST /api/forgot-password
+      if (path === '/api/forgot-password' && request.method === 'POST') {
+        return jsonResponse({ ok: true });
+      }
+
+      // 7. GET & POST /api/posts
+      if (path === '/api/posts') {
+        const user = await getAuthUser(request, db);
+        if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+        if (request.method === 'GET') {
+          const rows = await db.prepare('SELECT * FROM posts ORDER BY id DESC LIMIT 100').all();
+          return jsonResponse(rows.results || []);
+        }
+
+        if (request.method === 'POST') {
+          const body = await request.json();
+          const content = (body.content || '').trim();
+          if (!content) return jsonResponse({ error: 'Post cannot be empty.' }, 400);
+
+          await db
+            .prepare('INSERT INTO posts (user_id, user_name, content, created_at) VALUES (?, ?, ?, ?)')
+            .bind(user.id, user.name, content, new Date().toISOString())
+            .run();
+
+          return jsonResponse({ ok: true });
+        }
+      }
+
+      // 8a. GET /api/my-answers
+      if (path === '/api/my-answers' && request.method === 'GET') {
+        const user = await getAuthUser(request, db);
+        if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+        const rows = await db
+          .prepare('SELECT item_code, title, is_paid_item, lesson_tab, module, question, answer FROM answers WHERE user_id = ? ORDER BY id ASC')
+          .bind(user.id)
+          .all();
+
+        return jsonResponse({ answers: rows.results || [] });
+      }
+
+      // 8. POST /api/answers
+      if (path === '/api/answers' && request.method === 'POST') {
+        const user = await getAuthUser(request, db);
+        if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+        const body = await request.json();
+        const lessonTab = (body.lesson_tab || 'Answers').trim();
+        const moduleName = (body.module || '').trim();
+        const lessonName = (body.lesson || '').trim();
+        const itemCode = String(body.item_code || '').trim();
+        const title = String(body.title || body.question || '').trim();
+        const isPaidItem = body.is_paid_item ? 1 : 0;
+        const question = (body.question || '').trim();
+        const answer = (body.answer || '').trim();
+
+        await db
+          .prepare(
+            `INSERT INTO answers (user_id, member_number, user_name, user_email, lesson_tab, module, lesson, item_code, title, is_paid_item, question, answer)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          )
+          .bind(
+            user.id,
+            user.member_number || String(user.id),
+            user.name,
+            user.email,
+            lessonTab,
+            moduleName,
+            lessonName,
+            itemCode,
+            title,
+            isPaidItem,
+            question,
+            answer
+          )
+          .run();
+
+        if (tenant.apps_script_url && tenant.ams_sheet_url) {
           ctx.waitUntil(
-            fetch(env.AMS_WEBHOOK_URL, {
+            fetch(tenant.apps_script_url, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 action: 'save_answer',
                 sheetUrl: tenant.ams_sheet_url,
+                sheetId: extractSheetId(tenant.ams_sheet_url),
                 lesson_tab: lessonTab,
-                module: moduleName,
-                lesson: body.lesson || '',
-                item_code: itemCode,
-                title: body.title || question,
-                question: question,
-                answer: answer,
-                email: user.email,
+                member_number: user.member_number || String(user.id),
                 name: user.name,
-                member_number: user.member_number
-              })
+                email: user.email,
+                module: moduleName,
+                lesson: lessonName,
+                item_code: itemCode,
+                title: title,
+                is_paid_item: Boolean(isPaidItem),
+                question,
+                answer,
+              }),
             }).catch(() => {})
           );
         }
 
-        return json({ ok: true });
+        return jsonResponse({ ok: true });
       }
 
-      // 6. EVENTS & CALENDAR
-      if (path === '/api/events' && request.method === 'GET') {
-        const { results } = await env.DB.prepare(
-          'SELECT * FROM events WHERE tenant_domain = ? ORDER BY event_date ASC, start_time ASC'
-        ).bind(domain).all();
+      // 8b. GET /api/poll-results?poll_key=...
+      if (path === '/api/poll-results' && request.method === 'GET') {
+        const user = await getAuthUser(request, db);
+        if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
 
-        const isAdmin = user && (Number(user.is_admin) === 1 || String(user.member_number) === '1');
-        const events = [];
+        const pollKey = (url.searchParams.get('poll_key') || '').trim();
+        if (!pollKey) return jsonResponse({ error: 'Missing poll_key' }, 400);
 
-        for (const ev of results || []) {
-          const cntRow = await env.DB.prepare(
-            'SELECT COUNT(*) as cnt FROM event_rsvps WHERE event_id = ?'
-          ).bind(ev.id).first();
+        const allVotes = await db.prepare('SELECT user_id, choices FROM poll_votes WHERE poll_key = ?').bind(pollKey).all();
+        const rows = allVotes.results || [];
+        const { counts, totalVoters } = extractPollCounts(rows);
 
-          let enrolled = false;
-          if (user) {
-            const rsvp = await env.DB.prepare(
-              'SELECT id FROM event_rsvps WHERE event_id = ? AND (user_id = ? OR email = ?)'
-            ).bind(ev.id, user.id, user.email).first();
-            enrolled = Boolean(rsvp);
+        const myRow = rows.find((r) => r.user_id === user.id);
+        let userChoices = [];
+        if (myRow) {
+          try {
+            userChoices = JSON.parse(myRow.choices || '[]');
+          } catch (_) {
+            userChoices = myRow.choices ? [myRow.choices] : [];
           }
-
-          events.push({
-            ...ev,
-            enrolled: enrolled || isAdmin,
-            rsvp_count: cntRow?.cnt || 0,
-            location_url: (enrolled || isAdmin) ? ev.location_url : ''
-          });
         }
-        return json({ events });
+
+        return jsonResponse({
+          ok: true,
+          voted: userChoices.length > 0,
+          userChoices,
+          counts,
+          totalVoters,
+        });
       }
 
+      // 8c. POST /api/poll-vote
+      if (path === '/api/poll-vote' && request.method === 'POST') {
+        const user = await getAuthUser(request, db);
+        if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+
+        const body = await request.json();
+        const pollKey = (body.poll_key || '').trim();
+        const choices = Array.isArray(body.choices) ? body.choices.map((c) => String(c).trim()).filter(Boolean) : [];
+        if (!pollKey || choices.length === 0) {
+          return jsonResponse({ error: 'Please select at least one option.' }, 400);
+        }
+
+        await db
+          .prepare(
+            `INSERT INTO poll_votes (user_id, poll_key, choices, updated_at)
+             VALUES (?, ?, ?, ?)
+             ON CONFLICT(user_id, poll_key) DO UPDATE SET choices = excluded.choices, updated_at = excluded.updated_at`
+          )
+          .bind(user.id, pollKey, JSON.stringify(choices), new Date().toISOString())
+          .run();
+
+        const allVotes = await db.prepare('SELECT user_id, choices FROM poll_votes WHERE poll_key = ?').bind(pollKey).all();
+        const { counts, totalVoters } = extractPollCounts(allVotes.results || []);
+
+        if (tenant.apps_script_url && tenant.ams_sheet_url) {
+          const itemCode = String(body.item_code || '').trim();
+          const title = String(body.title || ('[Poll] ' + (body.question || '').trim())).trim();
+          const isPaidItem = Boolean(body.is_paid_item);
+
+          ctx.waitUntil(
+            fetch(tenant.apps_script_url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'save_answer',
+                sheetUrl: tenant.ams_sheet_url,
+                sheetId: extractSheetId(tenant.ams_sheet_url),
+                lesson_tab: (body.lesson_tab || 'Answers').trim(),
+                member_number: user.member_number || String(user.id),
+                name: user.name,
+                email: user.email,
+                module: (body.module || '').trim(),
+                lesson: (body.lesson || '').trim(),
+                item_code: itemCode,
+                title: title,
+                is_paid_item: isPaidItem,
+                question: '[Poll] ' + (body.question || '').trim(),
+                answer: choices.join(', '),
+              }),
+            }).catch(() => {})
+          );
+        }
+
+        return jsonResponse({
+          ok: true,
+          voted: true,
+          userChoices: choices,
+          counts,
+          totalVoters,
+        });
+      }
+
+      // ======================================================================
+      // 9. EVENTS & CALENDAR ROUTES
+      // ======================================================================
+
+      // 9a. GET /api/events
+      if (path === '/api/events' && request.method === 'GET') {
+        const user = await getAuthUser(request, db);
+        const isAdminUser = user && (Number(user.is_admin) === 1 || String(user.member_number) === '1');
+        const userEmail = user ? String(user.email || '').toLowerCase() : '';
+
+        const eventsRes = await db.prepare('SELECT * FROM events ORDER BY event_date ASC, start_time ASC').all();
+        const rsvpsRes = await db.prepare('SELECT event_id, user_email FROM event_rsvps').all();
+
+        const rsvpCounts = {};
+        const userEnrolledSet = new Set();
+        for (const r of rsvpsRes.results || []) {
+          rsvpCounts[r.event_id] = (rsvpCounts[r.event_id] || 0) + 1;
+          if (userEmail && String(r.user_email || '').toLowerCase() === userEmail) {
+            userEnrolledSet.add(r.event_id);
+          }
+        }
+
+        const items = (eventsRes.results || []).map((ev) => {
+          const enrolled = userEnrolledSet.has(ev.id);
+          const canRevealLink = Boolean(isAdminUser || enrolled);
+          return {
+            id: ev.id,
+            title: ev.title,
+            event_date: ev.event_date,
+            start_time: ev.start_time,
+            duration_mins: ev.duration_mins || 60,
+            timezone: ev.timezone || 'Asia/Hong_Kong',
+            recurring: ev.recurring || 'none',
+            location_type: ev.location_type || 'Zoom',
+            location_url: canRevealLink ? ev.location_url : '',
+            description: ev.description || '',
+            cover_url: ev.cover_url || '',
+            access_level: ev.access_level || 'all',
+            enrolled,
+            rsvp_count: rsvpCounts[ev.id] || 0,
+          };
+        });
+
+        return jsonResponse({ events: items });
+      }
+
+      // 9b. POST /api/events/enroll
       if (path === '/api/events/enroll' && request.method === 'POST') {
         const body = await request.json();
-        const ev = await env.DB.prepare(
-          'SELECT * FROM events WHERE id = ? AND tenant_domain = ?'
-        ).bind(body.event_id, domain).first();
-        if (!ev) return json({ error: 'Event not found.' }, 404);
+        const eventId = Number(body.event_id);
+        if (!eventId) return jsonResponse({ error: 'Missing event_id' }, 400);
 
-        const name = user ? user.name : String(body.guest_name || '').trim();
-        const email = user ? user.email : String(body.guest_email || '').trim().toLowerCase();
-        if (!name || !email) return json({ error: 'Name and email are required.' }, 400);
+        const ev = await db.prepare('SELECT * FROM events WHERE id = ?').bind(eventId).first();
+        if (!ev) return jsonResponse({ error: 'Event not found.' }, 404);
 
-        const existing = await env.DB.prepare(
-          'SELECT id FROM event_rsvps WHERE event_id = ? AND email = ?'
-        ).bind(ev.id, email).first();
+        const user = await getAuthUser(request, db);
+        const isAdminUser = user && (Number(user.is_admin) === 1 || String(user.member_number) === '1');
+        const isPaidUser = user && (Number(user.is_paid) === 1 || isAdminUser);
+        const isApprovedMember = user && (user.status === 'Approved' || isAdminUser);
 
-        const now = new Date().toISOString();
-        if (!existing) {
-          await env.DB.prepare(
-            'INSERT INTO event_rsvps (event_id, tenant_domain, user_id, name, email, enrolled_at) VALUES (?, ?, ?, ?, ?, ?)'
-          ).bind(ev.id, domain, user ? user.id : null, name, email, now).run();
+        if (ev.access_level === 'paid' && !isPaidUser) {
+          return jsonResponse({ error: 'This event is restricted to Paid Members.' }, 403);
+        }
+        if (ev.access_level === 'free' && !isApprovedMember) {
+          return jsonResponse({ error: 'Please log in with an approved member account to enroll.' }, 401);
+        }
 
-          if (env.AMS_WEBHOOK_URL && tenant.ams_sheet_url) {
-            ctx.waitUntil(
-              fetch(env.AMS_WEBHOOK_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  action: 'save_rsvp',
-                  sheetUrl: tenant.ams_sheet_url,
-                  enrolled_at: now,
-                  event_title: ev.title,
-                  event_date: ev.event_date,
-                  start_time: ev.start_time,
-                  access_level: ev.access_level,
-                  member_number: user ? user.member_number : 'Guest',
-                  name,
-                  email
-                })
-              }).catch(() => {})
+        const rsvpEmail = user ? user.email.toLowerCase() : (body.guest_email || '').trim().toLowerCase();
+        const rsvpName = user ? user.name : (body.guest_name || 'Guest').trim();
+        const memberNum = user ? (user.member_number || String(user.id)) : 'Guest';
+        if (!rsvpEmail) {
+          return jsonResponse({ error: 'Please enter your email address to enroll.' }, 400);
+        }
+
+        const enrolledAt = new Date().toISOString();
+        await db
+          .prepare(
+            `INSERT INTO event_rsvps (event_id, user_id, user_email, user_name, created_at)
+             VALUES (?, ?, ?, ?, ?)
+             ON CONFLICT(event_id, user_email) DO NOTHING`
+          )
+          .bind(eventId, user ? user.id : 0, rsvpEmail, rsvpName, enrolledAt)
+          .run();
+
+        const countRow = await db.prepare('SELECT COUNT(*) as cnt FROM event_rsvps WHERE event_id = ?').bind(eventId).first();
+
+        if (tenant.apps_script_url && tenant.ams_sheet_url) {
+          ctx.waitUntil(
+            fetch(tenant.apps_script_url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'save_rsvp',
+                sheetUrl: tenant.ams_sheet_url,
+                sheetId: extractSheetId(tenant.ams_sheet_url),
+                event_id: eventId,
+                event_title: ev.title,
+                event_date: ev.event_date,
+                start_time: ev.start_time,
+                access_level: ev.access_level,
+                member_number: memberNum,
+                name: rsvpName,
+                email: rsvpEmail,
+                enrolled_at: enrolledAt,
+              }),
+            }).catch(() => {})
+          );
+        }
+
+        return jsonResponse({
+          ok: true,
+          enrolled: true,
+          location_url: ev.location_url || '',
+          rsvp_count: countRow?.cnt || 1,
+        });
+      }
+
+      // ======================================================================
+      // ADMIN ROUTES
+      // ======================================================================
+      const adminUser = await getAuthUser(request, db);
+      if (!adminUser) {
+        return jsonResponse({ error: 'Session token not recognized on ' + tenant.db_binding + '. Please log out and log back in.' }, 401);
+      }
+
+      const isAdmin = Number(adminUser.is_admin) === 1 || String(adminUser.member_number) === '1';
+      if (!isAdmin) {
+        return jsonResponse({ error: 'Account ' + adminUser.email + ' is not marked as Admin.' }, 403);
+      }
+
+      // 9c. POST /api/events/save
+      if (path === '/api/events/save' && request.method === 'POST') {
+        const body = await request.json();
+        const id = body.id ? Number(body.id) : null;
+        const title = (body.title || '').trim();
+        const eventDate = (body.event_date || '').trim();
+        const startTime = (body.start_time || '').trim();
+        const durationMins = Math.max(15, parseInt(body.duration_mins, 10) || 60);
+        const timezone = (body.timezone || 'Asia/Hong_Kong').trim();
+        const recurring = (body.recurring || 'none').trim();
+        const locationType = (body.location_type || 'Zoom').trim();
+        const locationUrl = (body.location_url || '').trim();
+        const description = (body.description || '').trim();
+        const coverUrl = (body.cover_url || '').trim();
+        const accessLevel = ['all', 'free', 'paid'].includes(body.access_level) ? body.access_level : 'all';
+
+        if (!title || !eventDate || !startTime) {
+          return jsonResponse({ error: 'Title, date, and time are required.' }, 400);
+        }
+
+        if (id) {
+          await db
+            .prepare(
+              `UPDATE events SET title = ?, event_date = ?, start_time = ?, duration_mins = ?, timezone = ?,
+               recurring = ?, location_type = ?, location_url = ?, description = ?, cover_url = ?, access_level = ?
+               WHERE id = ?`
+            )
+            .bind(
+              title,
+              eventDate,
+              startTime,
+              durationMins,
+              timezone,
+              recurring,
+              locationType,
+              locationUrl,
+              description,
+              coverUrl,
+              accessLevel,
+              id
+            )
+            .run();
+        } else {
+          await db
+            .prepare(
+              `INSERT INTO events (title, event_date, start_time, duration_mins, timezone, recurring, location_type, location_url, description, cover_url, access_level)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            )
+            .bind(
+              title,
+              eventDate,
+              startTime,
+              durationMins,
+              timezone,
+              recurring,
+              locationType,
+              locationUrl,
+              description,
+              coverUrl,
+              accessLevel
+            )
+            .run();
+        }
+
+        return jsonResponse({ ok: true });
+      }
+
+      // 9d. POST /api/events/delete
+      if (path === '/api/events/delete' && request.method === 'POST') {
+        const body = await request.json();
+        const id = Number(body.id);
+        if (!id) return jsonResponse({ error: 'Missing event id' }, 400);
+        await db.prepare('DELETE FROM event_rsvps WHERE event_id = ?').bind(id).run();
+        await db.prepare('DELETE FROM events WHERE id = ?').bind(id).run();
+        return jsonResponse({ ok: true });
+      }
+
+      if (path === '/api/admin/users' && request.method === 'GET') {
+        const usersRes = await db
+          .prepare(
+            `SELECT u.*,
+              (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) AS post_count,
+              (SELECT COUNT(DISTINCT lesson_tab) FROM answers a WHERE a.user_id = u.id) AS lessons_done,
+              (SELECT COUNT(DISTINCT module) FROM answers a WHERE a.user_id = u.id AND a.module != '') AS modules_done
+             FROM users u
+             ORDER BY CAST(u.member_number AS INTEGER) ASC, u.id ASC`
+          )
+          .all();
+
+        const postsCount = await db.prepare('SELECT COUNT(*) as cnt FROM posts').first();
+
+        return jsonResponse({
+          users: usersRes.results || [],
+          total_posts: postsCount?.cnt || 0,
+          open_reports: 0,
+        });
+      }
+
+      if (path === '/api/admin/user-status' && request.method === 'POST') {
+        const body = await request.json();
+        await db.prepare('UPDATE users SET status = ? WHERE id = ?').bind(body.status, body.userId).run();
+        return jsonResponse({ ok: true });
+      }
+
+      if (path === '/api/admin/user-paid' && request.method === 'POST') {
+        const body = await request.json();
+        if (body.is_paid) {
+          const targetUser = await db.prepare('SELECT email, google_verified FROM users WHERE id = ?').bind(body.userId).first();
+          const hasGoogle = targetUser && (Number(targetUser.google_verified) === 1 || /@(gmail|googlemail)\.com$/i.test(targetUser.email));
+          if (!hasGoogle) {
+            return jsonResponse(
+              { error: 'A Google/Gmail address is required before upgrading a member to Paid status.' },
+              400
             );
           }
         }
-
-        const cntRow = await env.DB.prepare(
-          'SELECT COUNT(*) as cnt FROM event_rsvps WHERE event_id = ?'
-        ).bind(ev.id).first();
-
-        return json({ ok: true, location_url: ev.location_url, rsvp_count: cntRow?.cnt || 1 });
+        await db.prepare('UPDATE users SET is_paid = ? WHERE id = ?').bind(body.is_paid ? 1 : 0, body.userId).run();
+        return jsonResponse({ ok: true });
       }
 
-      if (path === '/api/events/save' && request.method === 'POST') {
-        if (!isAdminUser(user)) return json({ error: 'Admin access required.' }, 403);
-        const b = await request.json();
-
-        if (b.id) {
-          await env.DB.prepare(
-            `UPDATE events SET title=?, event_date=?, start_time=?, duration_mins=?, recurring=?, location_type=?, location_url=?, cover_url=?, description=?, access_level=?
-             WHERE id=? AND tenant_domain=?`
-          ).bind(
-            b.title, b.event_date, b.start_time, Number(b.duration_mins) || 60, b.recurring || 'none',
-            b.location_type || 'Zoom', b.location_url || '', b.cover_url || '', b.description || '',
-            b.access_level || 'all', b.id, domain
-          ).run();
-        } else {
-          await env.DB.prepare(
-            `INSERT INTO events (tenant_domain, title, event_date, start_time, duration_mins, recurring, location_type, location_url, cover_url, description, access_level, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-          ).bind(
-            domain, b.title, b.event_date, b.start_time, Number(b.duration_mins) || 60, b.recurring || 'none',
-            b.location_type || 'Zoom', b.location_url || '', b.cover_url || '', b.description || '',
-            b.access_level || 'all', new Date().toISOString()
-          ).run();
-        }
-        return json({ ok: true });
+      if (path === '/api/admin/user-admin' && request.method === 'POST') {
+        const body = await request.json();
+        await db.prepare('UPDATE users SET is_admin = ? WHERE id = ?').bind(body.is_admin ? 1 : 0, body.userId).run();
+        return jsonResponse({ ok: true });
       }
 
-      if (path === '/api/events/delete' && request.method === 'POST') {
-        if (!isAdminUser(user)) return json({ error: 'Admin access required.' }, 403);
-        const b = await request.json();
-        await env.DB.prepare('DELETE FROM events WHERE id = ? AND tenant_domain = ?').bind(b.id, domain).run();
-        await env.DB.prepare('DELETE FROM event_rsvps WHERE event_id = ?').bind(b.id).run();
-        return json({ ok: true });
+      if (path === '/api/admin/reset-password' && request.method === 'POST') {
+        const body = await request.json();
+        const target = await db.prepare('SELECT email FROM users WHERE id = ?').bind(body.userId).first();
+        if (!target) return jsonResponse({ error: 'User not found' }, 404);
+        await db.prepare('UPDATE users SET password = ? WHERE id = ?').bind(target.email, body.userId).run();
+        return jsonResponse({ ok: true });
       }
 
-      // 7. ADMIN ROUTES
-      if (path.startsWith('/api/admin/')) {
-        if (!isAdminUser(user)) return json({ error: 'Admin access required.' }, 403);
-
-        if (path === '/api/admin/settings' && request.method === 'POST') {
-          const body = await request.json();
-          const allowedKeys = [
-            'site_name', 'tagline', 'hero_title', 'hero_points', 'logo_url', 'favicon_url',
-            'primary_color', 'accent_color', 'bg_color', 'support_email', 'email_signing_name',
-            'offer_1_enabled', 'offer_1_title', 'offer_1_subtitle', 'offer_1_bullets', 'offer_1_timer_mins',
-            'offer_1_fast_price', 'offer_1_fast_url', 'offer_1_reg_price', 'offer_1_reg_url', 'offer_1_secret',
-            'offer_2_enabled', 'offer_2_title', 'offer_2_subtitle', 'offer_2_bullets', 'offer_2_timer_mins',
-            'offer_2_fast_price', 'offer_2_fast_url', 'offer_2_reg_price', 'offer_2_reg_url', 'offer_2_secret'
-          ];
-
-          for (const key of allowedKeys) {
-            if (body[key] !== undefined) {
-              await env.DB.prepare(
-                'INSERT INTO settings (tenant_domain, key, value) VALUES (?, ?, ?) ON CONFLICT(tenant_domain, key) DO UPDATE SET value = excluded.value'
-              ).bind(domain, key, String(body[key])).run();
-            }
-          }
-          return json({ ok: true });
+      if (path === '/api/admin/sync-members' && request.method === 'POST') {
+        if (!tenant.apps_script_url || !tenant.ams_sheet_url) {
+          return jsonResponse({ error: 'Apps Script URL or AMS Sheet URL is missing.' }, 400);
         }
 
-        if (path === '/api/admin/users' && request.method === 'GET') {
-          const { results: users } = await env.DB.prepare(
-            `SELECT u.*,
-              (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) as post_count,
-              (SELECT COUNT(*) FROM answers a WHERE a.user_id = u.id AND a.item_code LIKE '%_done' AND a.item_code NOT LIKE 'L%_done' AND a.answer = 'Done') as modules_done,
-              (SELECT COUNT(*) FROM answers a WHERE a.user_id = u.id AND a.item_code LIKE 'L%_done' AND a.answer = 'Done') as lessons_done
-             FROM users u WHERE u.tenant_domain = ? ORDER BY u.member_number ASC`
-          ).bind(domain).all();
-
-          const postRow = await env.DB.prepare(
-            'SELECT COUNT(*) as cnt FROM posts WHERE tenant_domain = ?'
-          ).bind(domain).first();
-
-          return json({ users: users || [], total_posts: postRow?.cnt || 0 });
-        }
-
-        if (path === '/api/admin/user-status' && request.method === 'POST') {
-          const b = await request.json();
-          await env.DB.prepare('UPDATE users SET status = ? WHERE id = ? AND tenant_domain = ?')
-            .bind(b.status, b.userId, domain).run();
-          return json({ ok: true });
-        }
-
-        if (path === '/api/admin/user-paid' && request.method === 'POST') {
-          const b = await request.json();
-          await env.DB.prepare('UPDATE users SET is_paid = ? WHERE id = ? AND tenant_domain = ?')
-            .bind(Number(b.is_paid) ? 1 : 0, b.userId, domain).run();
-          return json({ ok: true });
-        }
-
-        if (path === '/api/admin/user-admin' && request.method === 'POST') {
-          const b = await request.json();
-          await env.DB.prepare('UPDATE users SET is_admin = ? WHERE id = ? AND tenant_domain = ?')
-            .bind(Number(b.is_admin) ? 1 : 0, b.userId, domain).run();
-          return json({ ok: true });
-        }
-
-        if (path === '/api/admin/reset-password' && request.method === 'POST') {
-          const b = await request.json();
-          const target = await env.DB.prepare(
-            'SELECT email FROM users WHERE id = ? AND tenant_domain = ?'
-          ).bind(b.userId, domain).first();
-          if (!target) return json({ error: 'User not found.' }, 404);
-
-          const hash = await hashPassword(target.email);
-          await env.DB.prepare('UPDATE users SET password_hash = ? WHERE id = ?')
-            .bind(hash, b.userId).run();
-          return json({ ok: true });
-        }
-
-        if (path === '/api/admin/sync-members' && request.method === 'POST') {
-          if (!env.AMS_WEBHOOK_URL || !tenant.ams_sheet_url) {
-            return json({ error: 'AMS Webhook or Sheet URL not configured.' }, 400);
-          }
-
-          const { results: members } = await env.DB.prepare(
+        const usersRes = await db
+          .prepare(
             `SELECT u.member_number, u.name, u.email, u.status, u.is_paid, u.is_admin,
-                    u.session_count, u.click_count, u.created_at, u.last_seen,
-              (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) as post_count,
-              (SELECT COUNT(*) FROM answers a WHERE a.user_id = u.id AND a.item_code LIKE '%_done' AND a.item_code NOT LIKE 'L%_done' AND a.answer = 'Done') as modules_done,
-              (SELECT COUNT(*) FROM answers a WHERE a.user_id = u.id AND a.item_code LIKE 'L%_done' AND a.answer = 'Done') as lessons_done
-             FROM users u WHERE u.tenant_domain = ? ORDER BY u.member_number ASC`
-          ).bind(domain).all();
+              u.session_count, u.click_count, u.created_at, u.last_seen,
+              (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) AS post_count,
+              (SELECT COUNT(DISTINCT lesson_tab) FROM answers a WHERE a.user_id = u.id) AS lessons_done,
+              (SELECT COUNT(DISTINCT module) FROM answers a WHERE a.user_id = u.id AND a.module != '') AS modules_done
+             FROM users u
+             ORDER BY CAST(u.member_number AS INTEGER) ASC, u.id ASC`
+          )
+          .all();
 
-          const res = await fetch(env.AMS_WEBHOOK_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'sync_members',
-              sheetUrl: tenant.ams_sheet_url,
-              members: members || []
-            })
-          });
-          if (!res.ok) return json({ error: 'Failed to sync with Google Sheet.' }, 500);
-          return json({ ok: true, message: `Synced ${(members || []).length} members to Google Sheet!` });
+        const scriptRes = await fetch(tenant.apps_script_url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'sync_members',
+            sheetUrl: tenant.ams_sheet_url,
+            sheetId: extractSheetId(tenant.ams_sheet_url),
+            members: usersRes.results || [],
+          }),
+        });
+
+        const rawText = await scriptRes.text();
+        try {
+          return jsonResponse(JSON.parse(rawText));
+        } catch (_) {
+          const titleMatch = rawText.match(/<title>(.*?)<\/title>/i);
+          return jsonResponse(
+            {
+              error:
+                'Google Apps Script returned HTML (' +
+                (titleMatch ? titleMatch[1] : 'HTTP ' + scriptRes.status) +
+                '). Check AMS_WEBHOOK_URL in Cloudflare Worker Variables.',
+            },
+            502
+          );
         }
       }
 
-      return json({ error: 'Endpoint not found' }, 404);
-    } catch (err) {
-      return json({ error: err.message || 'Server error' }, 500);
-    }
-  }
-};
+      if (path === '/api/admin/settings' && request.method === 'POST') {
+        const body = await request.json();
+        const allowedKeys = [
+          'site_name',
+          'tagline',
+          'hero_title',
+          'hero_points',
+          'logo_url',
+          'favicon_url',
+          'primary_color',
+          'accent_color',
+          'bg_color',
+          'support_email',
+          // Offer Funnel Slot 1
+          'offer_1_enabled',
+          'offer_1_title',
+          'offer_1_subtitle',
+          'offer_1_bullets',
+          'offer_1_timer_mins',
+          'offer_1_fast_price',
+          'offer_1_fast_url',
+          'offer_1_reg_price',
+          'offer_1_reg_url',
+          'offer_1_secret',
+          // Offer Funnel Slot 2
+          'offer_2_enabled',
+          'offer_2_title',
+          'offer_2_subtitle',
+          'offer_2_bullets',
+          'offer_2_timer_mins',
+          'offer_2_fast_price',
+          'offer_2_fast_url',
+          'offer_2_reg_price',
+          'offer_2_reg_url',
+          'offer_2_secret',
+        ];
 
-// ============================================================================
-// HELPERS
-// ============================================================================
-
-async function ensureSchema(db) {
-  await db.batch([
-    db.prepare(`CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      tenant_domain TEXT NOT NULL,
-      member_number INTEGER DEFAULT 1,
-      name TEXT NOT NULL,
-      email TEXT NOT NULL,
-      password_hash TEXT NOT NULL,
-      status TEXT DEFAULT 'Pending',
-      is_paid INTEGER DEFAULT 0,
-      is_admin INTEGER DEFAULT 0,
-      session_count INTEGER DEFAULT 0,
-      click_count INTEGER DEFAULT 0,
-      last_seen TEXT,
-      created_at TEXT
-    )`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS sessions (
-      token TEXT PRIMARY KEY,
-      user_id INTEGER NOT NULL,
-      tenant_domain TEXT NOT NULL,
-      created_at TEXT
-    )`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS posts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      tenant_domain TEXT NOT NULL,
-      user_id INTEGER NOT NULL,
-      user_name TEXT NOT NULL,
-      content TEXT NOT NULL,
-      created_at TEXT
-    )`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS answers (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      tenant_domain TEXT NOT NULL,
-      user_id INTEGER NOT NULL,
-      lesson_tab TEXT NOT NULL,
-      module TEXT,
-      item_code TEXT,
-      question TEXT,
-      answer TEXT,
-      updated_at TEXT
-    )`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS settings (
-      tenant_domain TEXT NOT NULL,
-      key TEXT NOT NULL,
-      value TEXT,
-      PRIMARY KEY (tenant_domain, key)
-    )`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS events (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      tenant_domain TEXT NOT NULL,
-      title TEXT NOT NULL,
-      event_date TEXT NOT NULL,
-      start_time TEXT NOT NULL,
-      duration_mins INTEGER DEFAULT 60,
-      recurring TEXT DEFAULT 'none',
-      location_type TEXT DEFAULT 'Zoom',
-      location_url TEXT,
-      cover_url TEXT,
-      description TEXT,
-      access_level TEXT DEFAULT 'all',
-      created_at TEXT
-    )`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS event_rsvps (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      event_id INTEGER NOT NULL,
-      tenant_domain TEXT NOT NULL,
-      user_id INTEGER,
-      name TEXT NOT NULL,
-      email TEXT NOT NULL,
-      enrolled_at TEXT
-    )`)
-  ]);
-}
-
-async function getTenantConfig(domain) {
-  const fallback = { cms_csv_url: '', ams_sheet_url: '', settings: {} };
-  try {
-    const res = await fetch(MASTER_CSV_URL);
-    if (!res.ok) return fallback;
-    const rows = parseCsv(await res.text());
-    for (let i = 1; i < rows.length; i++) {
-      const r = rows[i];
-      const rowDomain = String(r[0] || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-      if (rowDomain === domain) {
-        return {
-          cms_csv_url: (r[1] || '').trim(),
-          ams_sheet_url: (r[2] || '').trim(),
-          settings: {
-            site_name: (r[6] || '').trim(),
-            tagline: (r[7] || '').trim(),
-            hero_title: (r[8] || '').trim(),
-            hero_points: (r[9] || '').trim(),
-            logo_url: (r[10] || '').trim(),
-            favicon_url: (r[11] || '').trim(),
-            primary_color: (r[12] || '').trim(),
-            accent_color: (r[13] || '').trim(),
-            bg_color: (r[14] || '').trim(),
-            support_email: (r[15] || '').trim(),
-            email_signing_name: (r[16] || '').trim()
+        for (const key of allowedKeys) {
+          if (body[key] !== undefined) {
+            await db
+              .prepare(
+                `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now'))
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
+              )
+              .bind(key, String(body[key]))
+              .run();
           }
-        };
+        }
+
+        tenantCache.expiresAt = 0;
+
+        if (tenant.apps_script_url) {
+          ctx.waitUntil(
+            fetch(tenant.apps_script_url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'sync_settings',
+                domain: tenant.domain,
+                settings: body,
+              }),
+            }).catch(() => {})
+          );
+        }
+
+        return jsonResponse({ ok: true });
       }
+
+      return jsonResponse({ error: 'Not found' }, 404);
+    } catch (err) {
+      return jsonResponse({ error: err.message || 'Server error' }, 500);
     }
-  } catch (e) {}
-  return fallback;
-}
-
-async function getDbSettings(db, domain) {
-  const { results } = await db.prepare(
-    'SELECT key, value FROM settings WHERE tenant_domain = ?'
-  ).bind(domain).all();
-  const map = {};
-  for (const row of results || []) map[row.key] = row.value;
-  return map;
-}
-
-async function getAuthUser(request, db, domain) {
-  const auth = request.headers.get('Authorization') || '';
-  const token = auth.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return null;
-  return getAuthUserByToken(token, db, domain);
-}
-
-async function getAuthUserByToken(token, db, domain) {
-  const row = await db.prepare(
-    `SELECT u.* FROM sessions s
-     JOIN users u ON u.id = s.user_id
-     WHERE s.token = ? AND s.tenant_domain = ?`
-  ).bind(token, domain).first();
-  return row || null;
-}
-
-function isAdminUser(user) {
-  return Boolean(user && (Number(user.is_admin) === 1 || String(user.member_number) === '1'));
-}
-
-async function hashPassword(password) {
-  const data = new TextEncoder().encode(password);
-  const digest = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function parseCsv(text) {
-  const rows = [];
-  let row = [];
-  let token = '';
-  let insideQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    const next = text[i + 1];
-    if (c === '"') {
-      if (insideQuotes && next === '"') { token += '"'; i++; }
-      else { insideQuotes = !insideQuotes; }
-    } else if (c === ',' && !insideQuotes) {
-      row.push(token); token = '';
-    } else if ((c === '\r' || c === '\n') && !insideQuotes) {
-      if (c === '\r' && next === '\n') i++;
-      row.push(token); token = '';
-      if (row.length > 0 && row.some(cell => cell.trim())) rows.push(row);
-      row = [];
-    } else {
-      token += c;
-    }
-  }
-  if (token || row.length > 0) {
-    row.push(token);
-    if (row.some(cell => cell.trim())) rows.push(row);
-  }
-  return rows;
-}
-
-function corsHeaders() {
-  return {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-  };
-}
-
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json', ...corsHeaders() }
-  });
-}
+  },
+};
